@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -106,7 +106,7 @@ export default function AIGeneratorPage() {
   const [productDescription, setProductDescription] = useState('')
 
   // Smart prompt builder
-  const buildSmartPrompt = () => {
+  const buildSmartPrompt = useCallback(() => {
     const template = promptTemplates[category as keyof typeof promptTemplates]?.[subcategory as keyof typeof promptTemplates.coloring] || ''
     const ThemeIcon = botanicalThemes.find(t => t.value === theme)?.icon
     const themeName = botanicalThemes.find(t => t.value === theme)?.label || theme
@@ -141,7 +141,7 @@ export default function AIGeneratorPage() {
     }
     
     return `${smartPrompt}, ${enhancements.join(', ')}`
-  }
+  }, [category, subcategory, ageGroup, theme, style])
 
   // Update prompt wanneer settings veranderen
   useEffect(() => {
@@ -196,6 +196,11 @@ export default function AIGeneratorPage() {
   const saveAsProduct = async () => {
     if (selectedImage === null || !productName) {
       alert('Selecteer een afbeelding en vul een productnaam in')
+      return
+    }
+
+    if (productName.length < 3) {
+      alert('Productnaam moet minimaal 3 karakters lang zijn')
       return
     }
 
@@ -518,7 +523,7 @@ export default function AIGeneratorPage() {
                             variant="secondary"
                             onClick={(e) => {
                               e.stopPropagation()
-                              window.open(img.url, '_blank')
+                              window.open(img.url, '_blank', 'noopener,noreferrer')
                             }}
                           >
                             <Download className="h-4 w-4" />
