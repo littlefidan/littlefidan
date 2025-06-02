@@ -3,13 +3,14 @@ import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import ProductDetail from './product-detail'
 
-export async function generateMetadata({ params }: { params: { slug: string } }) {
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
   const supabase = createServerComponentClient({ cookies })
   
   const { data: product } = await supabase
     .from('products')
     .select('*')
-    .eq('slug', params.slug)
+    .eq('slug', slug)
     .eq('status', 'active')
     .single()
 
@@ -28,8 +29,9 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 export default async function ProductDetailPage({ 
   params 
 }: { 
-  params: { slug: string } 
+  params: Promise<{ slug: string }> 
 }) {
+  const { slug } = await params
   const supabase = createServerComponentClient({ cookies })
 
   // Fetch product with all related data
@@ -39,7 +41,7 @@ export default async function ProductDetailPage({
       *,
       product_files(*)
     `)
-    .eq('slug', params.slug)
+    .eq('slug', slug)
     .eq('status', 'active')
     .single()
 

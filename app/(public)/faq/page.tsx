@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, HelpCircle, Download, CreditCard, ShoppingBag, Users, Mail } from 'lucide-react'
+import { ChevronDown, HelpCircle, Download, ShoppingBag, Users, Mail } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -57,33 +57,11 @@ const faqData: FAQItem[] = [
     answer: 'Geen zorgen! Controleer eerst je spam-folder voor de downloadmail. Probeer ook een andere browser of apparaat. Werkt het nog steeds niet? Stuur ons een e-mail naar support@littlefidan.nl met je ordernummer en we helpen je direct. We reageren binnen 24 uur op werkdagen.'
   },
 
-  // Abonnementen
-  {
-    category: 'subscriptions',
-    question: 'Hoe werken de abonnementen?',
-    answer: 'Met een abonnement krijg je onbeperkt toegang tot ALLE producten in onze catalogus. We hebben drie niveaus: Basic (€19/maand) voor persoonlijk gebruik, Professional (€39/maand) met commerciële licentie, en School (€99/maand) voor meerdere gebruikers. Je kunt maandelijks opzeggen zonder opzegtermijn.'
-  },
-  {
-    category: 'subscriptions',
-    question: 'Kan ik mijn abonnement upgraden of downgraden?',
-    answer: 'Jazeker! Je kunt op elk moment je abonnement aanpassen in je accountinstellingen. Bij een upgrade betaal je alleen het verschil voor de resterende periode. Bij een downgrade gaat de wijziging in bij de volgende facturatieperiode.'
-  },
-  {
-    category: 'subscriptions',
-    question: 'Krijg ik toegang tot nieuwe producten?',
-    answer: 'Ja! Als abonnee krijg je automatisch toegang tot alle nieuwe producten die we toevoegen. Professional en School abonnees krijgen zelfs early access - zij kunnen nieuwe producten 1 week eerder downloaden dan andere klanten.'
-  },
-  {
-    category: 'subscriptions',
-    question: 'Hoe zeg ik mijn abonnement op?',
-    answer: 'Je kunt je abonnement op elk moment opzeggen via je accountinstellingen. Klik op "Abonnement beheren" en dan op "Opzeggen". Je behoudt toegang tot de producten tot het einde van je huidige facturatieperiode. Er is geen opzegtermijn.'
-  },
-
   // Educatief & Scholen
   {
     category: 'education',
     question: 'Zijn jullie producten geschikt voor scholen?',
-    answer: 'Absoluut! Onze producten zijn ontwikkeld door onderwijsprofessionals en sluiten aan bij ontwikkelingsdoelen. Ze zijn perfect voor gebruik in het klaslokaal, BSO, of voor thuisonderwijs. Met een School-abonnement krijgen maximaal 5 leerkrachten toegang tot alle materialen.'
+    answer: 'Absoluut! Onze producten zijn ontwikkeld door onderwijsprofessionals en sluiten aan bij ontwikkelingsdoelen. Ze zijn perfect voor gebruik in het klaslokaal, BSO, of voor thuisonderwijs. Neem contact met ons op voor speciale tarieven voor scholen.'
   },
   {
     category: 'education',
@@ -110,14 +88,13 @@ const faqData: FAQItem[] = [
   {
     category: 'account',
     question: 'Kan ik mijn account delen met anderen?',
-    answer: 'Accounts zijn persoonlijk en mogen niet gedeeld worden. Voor gezinnen is één account voldoende - je mag de gedownloade materialen gebruiken voor je hele gezin. Scholen kunnen een School-abonnement nemen waarbij meerdere leerkrachten eigen toegang krijgen.'
+    answer: 'Accounts zijn persoonlijk en mogen niet gedeeld worden. Voor gezinnen is één account voldoende - je mag de gedownloade materialen gebruiken voor je hele gezin. Scholen kunnen contact met ons opnemen voor aangepaste licenties.'
   },
 ]
 
 const categories = [
   { id: 'orders', label: 'Bestellingen & Betaling', icon: ShoppingBag },
   { id: 'downloads', label: 'Downloads & Gebruik', icon: Download },
-  { id: 'subscriptions', label: 'Abonnementen', icon: CreditCard },
   { id: 'education', label: 'Educatief & Scholen', icon: Users },
   { id: 'account', label: 'Account & Privacy', icon: HelpCircle },
 ]

@@ -27,13 +27,14 @@ interface Product {
   access_type: string
 }
 
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params
   const supabase = createServerComponentClient({ cookies })
   
   const { data: category } = await supabase
     .from('categories')
     .select('*')
-    .eq('slug', params.slug)
+    .eq('slug', slug)
     .single()
 
   if (!category) {
@@ -48,14 +49,15 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   }
 }
 
-export default async function CategoryPage({ params }: { params: { slug: string } }) {
+export default async function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
   const supabase = createServerComponentClient({ cookies })
 
   // Fetch category
   const { data: category, error: categoryError } = await supabase
     .from('categories')
     .select('*')
-    .eq('slug', params.slug)
+    .eq('slug', slug)
     .single()
 
   if (categoryError || !category) {

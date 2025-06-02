@@ -2,11 +2,32 @@ import { CheckCircle, Download, Mail, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import Link from 'next/link'
+import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
 
-export default function CheckoutSuccessPage() {
-  // Mock order data - replace with real order from URL params or session
-  const orderNumber = 'ORD-2024-003'
-  const email = 'klant@voorbeeld.nl'
+export default async function CheckoutSuccessPage({
+  searchParams
+}: {
+  searchParams: Promise<{ order_id?: string }>
+}) {
+  const { order_id } = await searchParams
+  const supabase = createServerComponentClient({ cookies })
+  
+  if (!order_id) {
+    redirect('/products')
+  }
+
+  // Get order details
+  const { data: order, error } = await supabase
+    .from('orders')
+    .select('*, order_items(*)')
+    .eq('id', order_id)
+    .single()
+
+  if (error || !order) {
+    redirect('/products')
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-sage-50 to-earth-warm flex items-center justify-center p-4">
@@ -28,7 +49,7 @@ export default function CheckoutSuccessPage() {
             </p>
             
             <p className="text-sage-600 font-medium mb-8">
-              Bestelnummer: {orderNumber}
+              Bestelnummer: {order.order_number}
             </p>
 
             {/* What happens next */}
@@ -40,7 +61,7 @@ export default function CheckoutSuccessPage() {
               <ul className="space-y-3 text-sm text-sage-600">
                 <li className="flex items-start gap-2">
                   <span className="text-sage-400 mt-0.5">✓</span>
-                  <span>Je ontvangt binnen enkele minuten een bevestigingsmail op <strong>{email}</strong></span>
+                  <span>Je ontvangt binnen enkele minuten een bevestigingsmail op <strong>{order.customer_email}</strong></span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-sage-400 mt-0.5">✓</span>
@@ -55,6 +76,33 @@ export default function CheckoutSuccessPage() {
                   <span>Downloads zijn 30 dagen geldig met maximaal 5 downloads per product</span>
                 </li>
               </ul>
+            </div>
+
+            {/* Order Summary */}
+            <div className="bg-white border border-sage-200 rounded-xl p-4 mb-8 text-left">
+              <h3 className="font-semibold text-sage-600 mb-3">Bestelde producten:</h3>
+              <div className="space-y-2">
+                {order.order_items.map((item: any) => (
+                  <div key={item.id} className="flex justify-between text-sm">
+                    <span className="text-sage-600">{item.product_name}</span>
+                    <span className="text-sage-500">€{item.total.toFixed(2)}</span>
+                  </div>
+                ))}
+                <div className="border-t pt-2 mt-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-sage-500">Subtotaal</span>
+                    <span className="text-sage-600">€{order.subtotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-sage-500">BTW (21%)</span>
+                    <span className="text-sage-600">€{order.tax.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between font-semibold mt-2">
+                    <span className="text-sage-600">Totaal</span>
+                    <span className="text-sage-600">€{order.total.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Action Buttons */}

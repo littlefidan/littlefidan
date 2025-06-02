@@ -89,22 +89,31 @@ const features = [
 ]
 
 export default function HomePage() {
+  // Fixed blob positions and sizes to prevent hydration mismatch
+  const blobs = [
+    { size: 400, x: 20, y: 10 },
+    { size: 350, x: 75, y: 60 },
+    { size: 450, x: 10, y: 80 },
+    { size: 300, x: 85, y: 20 },
+    { size: 380, x: 50, y: 50 },
+  ]
+
   return (
     <>
       {/* Hero Section - Product Focused */}
       <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden bg-gradient-to-br from-sage-50 via-mint-50 to-baby-blue-50">
         {/* Animated Background */}
         <div className="absolute inset-0">
-          {[...Array(5)].map((_, i) => (
+          {blobs.map((blob, i) => (
             <motion.div
               key={i}
               className="absolute rounded-full mix-blend-multiply filter blur-xl opacity-30"
               style={{
                 background: i % 2 === 0 ? '#B8E4D0' : '#87CEEB',
-                width: `${Math.random() * 400 + 200}px`,
-                height: `${Math.random() * 400 + 200}px`,
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
+                width: `${blob.size}px`,
+                height: `${blob.size}px`,
+                left: `${blob.x}%`,
+                top: `${blob.y}%`,
               }}
               animate={{
                 x: [0, 30, -30, 0],

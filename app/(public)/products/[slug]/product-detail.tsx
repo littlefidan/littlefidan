@@ -70,9 +70,9 @@ export default function ProductDetail({ product, bundleItems, relatedProducts }:
     addToCart({
       id: product.id,
       name: product.name,
+      slug: product.slug,
       price: product.price,
-      image: product.images[0] || '',
-      quantity: 1
+      image: product.images[0] || ''
     })
     
     toast.success('Toegevoegd aan winkelwagen!')
@@ -83,6 +83,7 @@ export default function ProductDetail({ product, bundleItems, relatedProducts }:
     toggleWishlist({
       id: product.id,
       name: product.name,
+      slug: product.slug,
       price: product.price,
       image: product.images[0] || ''
     })

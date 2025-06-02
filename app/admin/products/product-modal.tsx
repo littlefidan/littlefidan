@@ -85,9 +85,9 @@ export default function ProductModal({ product, onClose, onSave }: ProductModalP
         original_price: product.original_price || 0,
         category: product.category,
         tags: product.tags || [],
-        status: product.status,
-        product_type: product.product_type || 'single',
-        access_type: product.access_type || 'paid',
+        status: (product.status as any) || 'draft',
+        product_type: (product.product_type as any) || 'single',
+        access_type: (product.access_type as any) || 'paid',
         images: product.images || []
       })
       
@@ -96,7 +96,7 @@ export default function ProductModal({ product, onClose, onSave }: ProductModalP
         loadProductFiles(product.id)
         
         // Load bundle items if it's a bundle
-        if (product.product_type === 'bundle') {
+        if ((product.product_type as any) === 'bundle') {
           loadBundleItems(product.id)
         }
       }
@@ -269,7 +269,7 @@ export default function ProductModal({ product, onClose, onSave }: ProductModalP
       }
 
       // Save bundle items if it's a bundle
-      if (productId && formData.product_type === 'bundle' && bundleProducts.length > 0) {
+      if (productId && (formData.product_type as any) === 'bundle' && bundleProducts.length > 0) {
         // First, delete existing bundle items if updating
         if (product) {
           await supabase
@@ -351,13 +351,13 @@ export default function ProductModal({ product, onClose, onSave }: ProductModalP
               </label>
 
               <label className={`relative flex flex-col items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                formData.product_type === 'bundle' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                (formData.product_type as any) === 'bundle' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
               }`}>
                 <input
                   type="radio"
                   name="product_type"
                   value="bundle"
-                  checked={formData.product_type === 'bundle'}
+                  checked={(formData.product_type as any) === 'bundle'}
                   onChange={(e) => setFormData({ ...formData, product_type: e.target.value as any })}
                   className="sr-only"
                 />
@@ -507,7 +507,7 @@ export default function ProductModal({ product, onClose, onSave }: ProductModalP
           </div>
 
           {/* Bundle Products (for bundle type) */}
-          {formData.product_type === 'bundle' && (
+          {(formData.product_type as any) === 'bundle' && (
             <BundleSelector
               bundleId={product?.id}
               selectedProducts={bundleProducts}
@@ -649,7 +649,7 @@ export default function ProductModal({ product, onClose, onSave }: ProductModalP
             </label>
             <select
               value={formData.status}
-              onChange={(e) => setFormData({ ...formData, status: e.target.value as Product['status'] })}
+              onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="draft">Concept</option>

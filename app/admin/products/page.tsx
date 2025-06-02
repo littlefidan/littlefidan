@@ -286,7 +286,7 @@ export default function AdminProducts() {
       {/* Modal */}
       {modalOpen && (
         <ProductModal
-          product={selectedProduct}
+          product={selectedProduct as any}
           onClose={handleModalClose}
           onSave={fetchProducts}
         />

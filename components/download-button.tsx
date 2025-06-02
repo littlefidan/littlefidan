@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Download, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 
 interface DownloadButtonProps {
@@ -23,7 +23,7 @@ export default function DownloadButton({
   className 
 }: DownloadButtonProps) {
   const [isDownloading, setIsDownloading] = useState(false)
-  const supabase = createClientComponentClient()
+  const supabase = createClient()
   const router = useRouter()
 
   const handleDownload = async () => {
@@ -40,7 +40,7 @@ export default function DownloadButton({
       }
 
       // Get download URL from API
-      const response = await fetch(`/api/downloads/${fileId}`)
+      const response = await fetch(`/api/download/${fileId}`)
       const data = await response.json()
 
       if (!response.ok) {
@@ -49,7 +49,7 @@ export default function DownloadButton({
 
       // Create temporary link and trigger download
       const link = document.createElement('a')
-      link.href = data.download_url
+      link.href = data.downloadUrl
       link.download = fileName
       link.target = '_blank'
       document.body.appendChild(link)

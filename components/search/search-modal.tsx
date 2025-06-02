@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Search, X, ArrowRight, Filter, Loader2 } from 'lucide-react'
+import { Search, X, ArrowRight, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
@@ -14,46 +14,19 @@ interface SearchModalProps {
   onClose: () => void
 }
 
-// Mock search results - replace with actual search
-const mockSearch = (query: string) => {
-  const allProducts = [
-    {
-      id: '1',
-      title: 'Seizoenskaarten - Lente',
-      slug: 'seizoenskaarten-lente',
-      price: 12.95,
-      category: 'Seizoensgebonden',
-      image: 'https://placehold.co/100x100/9CAA8B/FFFFFF?text=Lente',
-    },
-    {
-      id: '2',
-      title: 'Natuurlijke Telkaarten',
-      slug: 'natuurlijke-telkaarten',
-      price: 15.95,
-      category: 'Educatief',
-      image: 'https://placehold.co/100x100/D4A786/FFFFFF?text=Tellen',
-    },
-    {
-      id: '3',
-      title: 'Mindful Kleuren - Botanisch',
-      slug: 'mindful-kleuren-botanisch',
-      price: 9.95,
-      category: 'Mindfulness',
-      image: 'https://placehold.co/100x100/E8B4A0/FFFFFF?text=Kleuren',
-    },
-  ]
-
-  if (!query) return []
-  
-  return allProducts.filter(product => 
-    product.title.toLowerCase().includes(query.toLowerCase()) ||
-    product.category.toLowerCase().includes(query.toLowerCase())
-  )
+interface Product {
+  id: string
+  title: string
+  slug: string
+  price: number
+  category: string
+  image: string | null
+  tags: string[]
 }
 
 export function SearchModal({ isOpen, onClose }: SearchModalProps) {
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<any[]>([])
+  const [results, setResults] = useState<Product[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -83,22 +56,32 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
   }, [onClose])
 
   useEffect(() => {
-    const delayDebounce = setTimeout(() => {
+    const delayDebounce = setTimeout(async () => {
       if (query.length > 1) {
         setIsSearching(true)
-        // Simulate API delay
-        setTimeout(() => {
-          const searchResults = mockSearch(query)
-          setResults(searchResults)
+        try {
+          const response = await fetch(`/api/search?q=${encodeURIComponent(query)}${selectedCategory ? `&category=${encodeURIComponent(selectedCategory)}` : ''}`)
+          const data = await response.json()
+          
+          if (response.ok) {
+            setResults(data.products || [])
+          } else {
+            console.error('Search failed:', data.error)
+            setResults([])
+          }
+        } catch (error) {
+          console.error('Search error:', error)
+          setResults([])
+        } finally {
           setIsSearching(false)
-        }, 300)
+        }
       } else {
         setResults([])
       }
     }, 300)
 
     return () => clearTimeout(delayDebounce)
-  }, [query])
+  }, [query, selectedCategory])
 
   if (!isOpen) return null
 
@@ -190,12 +173,18 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                   <Card className="hover:shadow-md transition-shadow">
                     <div className="flex items-center gap-4 p-4">
                       <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-sage-50 flex-shrink-0">
-                        <Image
-                          src={product.image}
-                          alt={product.title}
-                          fill
-                          className="object-cover"
-                        />
+                        {product.image ? (
+                          <Image
+                            src={product.image}
+                            alt={product.title}
+                            fill
+                            className="object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-sage-100 text-sage-400 text-xs">
+                            {product.title.charAt(0)}
+                          </div>
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="font-medium text-sage-600 group-hover:text-sage-500 truncate">

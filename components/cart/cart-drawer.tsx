@@ -81,8 +81,8 @@ export function CartDrawer() {
                     >
                       <div className="relative h-20 w-20 overflow-hidden rounded-xl bg-sage-50">
                         <Image
-                          src={item.image || `https://placehold.co/200x200/9CAA8B/FFFFFF?text=${encodeURIComponent(item.title)}`}
-                          alt={item.title}
+                          src={item.image || `https://placehold.co/200x200/9CAA8B/FFFFFF?text=${encodeURIComponent(item.name)}`}
+                          alt={item.name}
                           fill
                           className="object-cover"
                         />
@@ -93,14 +93,14 @@ export function CartDrawer() {
                           onClick={toggleCart}
                           className="font-medium text-sage-600 hover:text-sage-500"
                         >
-                          {item.title}
+                          {item.name}
                         </Link>
                         <p className="text-sm text-sage-500 mb-1">
-                          {item.botanicalTheme && (
-                            <span className="capitalize">{item.botanicalTheme}</span>
+                          {(item as any).botanicalTheme && (
+                            <span className="capitalize">{(item as any).botanicalTheme}</span>
                           )}
-                          {item.botanicalTheme && item.ageRange && ' • '}
-                          {item.ageRange}
+                          {(item as any).botanicalTheme && (item as any).ageRange && ' • '}
+                          {(item as any).ageRange}
                         </p>
                         <p className="font-semibold text-sage-600">
                           {formatPrice(item.price)}

@@ -60,19 +60,41 @@ export default function CheckoutPage() {
 
     setIsProcessing(true)
     
-    // TODO: Implement Mollie payment
-    console.log('Processing payment:', {
-      items,
-      total,
-      payment: selectedPayment,
-      customer: formData,
-    })
+    try {
+      const response = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          items: items.map(item => ({
+            ...item,
+            quantity: item.quantity || 1
+          })),
+          customerData: formData,
+          paymentMethod: selectedPayment
+        }),
+      })
 
-    // Simulate payment processing
-    setTimeout(() => {
-      clearCart()
-      router.push('/checkout/success')
-    }, 2000)
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Er ging iets mis met de betaling')
+      }
+
+      if (data.success) {
+        clearCart()
+        
+        if (data.checkoutUrl) {
+          // Redirect to payment page (Mollie or success page)
+          window.location.href = data.checkoutUrl
+        }
+      }
+    } catch (error) {
+      console.error('Checkout error:', error)
+      alert(error instanceof Error ? error.message : 'Er ging iets mis. Probeer het opnieuw.')
+      setIsProcessing(false)
+    }
   }
 
   return (
@@ -101,15 +123,15 @@ export default function CheckoutPage() {
                     <div key={item.id} className="flex gap-3">
                       <div className="w-16 h-16 rounded-xl overflow-hidden bg-sage-50 flex-shrink-0">
                         <Image
-                          src={item.image || `https://placehold.co/100x100/9CAA8B/FFFFFF?text=${encodeURIComponent(item.title)}`}
-                          alt={item.title}
+                          src={item.image || `https://placehold.co/100x100/9CAA8B/FFFFFF?text=${encodeURIComponent(item.name)}`}
+                          alt={item.name}
                           width={64}
                           height={64}
                           className="object-cover"
                         />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-sage-600 text-sm truncate">{item.title}</h4>
+                        <h4 className="font-medium text-sage-600 text-sm truncate">{item.name}</h4>
                         <p className="text-sm text-sage-500">{formatPrice(item.price)}</p>
                       </div>
                     </div>

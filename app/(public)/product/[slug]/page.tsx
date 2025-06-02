@@ -86,7 +86,7 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
   const handleAddToCart = () => {
     addItem({
       id: mockProduct.id,
-      title: mockProduct.name,
+      name: mockProduct.name,
       price: mockProduct.price,
       image: mockProduct.images[0],
       slug: mockProduct.slug,
@@ -101,7 +101,7 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
     } else {
       addToWishlist({
         id: mockProduct.id,
-        title: mockProduct.name,
+        name: mockProduct.name,
         price: mockProduct.price,
         image: mockProduct.images[0],
         slug: mockProduct.slug,

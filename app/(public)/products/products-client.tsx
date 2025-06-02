@@ -7,6 +7,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { NewsletterForm } from '@/components/newsletter-form'
 
 interface Category {
   id: string
@@ -397,16 +398,7 @@ export default function ProductsClient({ initialData }: { initialData: InitialDa
             <p className="text-neutral-medium mb-8">
               Meld je aan voor onze nieuwsbrief en ontvang 10% korting op je eerste bestelling!
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
-              <Input
-                type="email"
-                placeholder="jouw@email.nl"
-                className="flex-1 rounded-full"
-              />
-              <Button className="bg-primary hover:bg-primary-600 text-white rounded-full">
-                Aanmelden
-              </Button>
-            </div>
+            <NewsletterForm className="max-w-md mx-auto" />
           </motion.div>
         </div>
       </section>

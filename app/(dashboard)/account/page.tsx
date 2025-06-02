@@ -1,243 +1,222 @@
-import { ShoppingBag, Download, Heart, TrendingUp, Calendar, Package } from 'lucide-react'
+import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import { Download, ShoppingBag, Heart, User, FileText, Settings } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import Link from 'next/link'
-import { formatPrice } from '@/lib/utils'
+import { createClient } from '@/utils/supabase/server'
 
-// Mock data - replace with real data from Supabase
-const stats = {
-  totalOrders: 12,
-  totalDownloads: 48,
-  wishlistItems: 7,
-  subscriptionStatus: 'active',
-  totalSpent: 234.50,
-  memberSince: '2024-03-15',
-}
+export default async function AccountDashboard() {
+  const supabase = await createClient()
+  
+  // Get current user
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (!user) {
+    redirect('/login')
+  }
 
-const recentOrders = [
-  {
-    id: '1',
-    orderNumber: 'ORD-2024-001',
-    date: '2024-12-15',
-    total: 45.90,
-    status: 'completed',
-    items: 3,
-  },
-  {
-    id: '2',
-    orderNumber: 'ORD-2024-002',
-    date: '2024-12-10',
-    total: 28.95,
-    status: 'completed',
-    items: 2,
-  },
-]
+  // Get or create profile
+  let { data: profile } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single()
+  
+  // If no profile exists, create one
+  if (!profile) {
+    const { data: newProfile } = await supabase
+      .from('profiles')
+      .insert({
+        id: user.id,
+        email: user.email,
+        full_name: user.user_metadata?.full_name || null,
+        is_admin: false
+      })
+      .select()
+      .single()
+    
+    profile = newProfile
+  }
 
-const recentDownloads = [
-  {
-    id: '1',
-    title: 'Seizoenskaarten - Winter',
-    downloadDate: '2024-12-15',
-    downloadsLeft: 3,
-  },
-  {
-    id: '2',
-    title: 'Mindful Kleuren - Botanisch',
-    downloadDate: '2024-12-10',
-    downloadsLeft: 4,
-  },
-]
+  // Get user statistics
+  const { count: orderCount } = await supabase
+    .from('orders')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', user.id)
 
-export default function AccountDashboard() {
+  const { count: downloadCount } = await supabase
+    .from('order_items')
+    .select(`
+      *,
+      order:orders!inner(*)
+    `, { count: 'exact', head: true })
+    .eq('order.user_id', user.id)
+    .eq('order.payment_status', 'paid')
+
+  // Get recent orders
+  const { data: recentOrders } = await supabase
+    .from('orders')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(3)
+
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="font-serif text-3xl font-bold text-sage-600 mb-2">
-          Welkom terug!
+        <h1 className="font-serif text-2xl md:text-3xl font-bold text-sage-600 mb-2">
+          Welkom terug{profile?.full_name ? `, ${profile.full_name}` : ''}!
         </h1>
-        <p className="text-sage-500">
-          Hier vind je een overzicht van je account en recente activiteiten.
+        <p className="text-sage-500 text-sm md:text-base">
+          Beheer je account, bestellingen en downloads vanaf één plek.
         </p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center justify-between">
-              <span className="text-sm font-medium text-sage-600">Bestellingen</span>
-              <ShoppingBag className="h-4 w-4 text-sage-400" />
+      {/* Quick Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+        <Card className="group hover:shadow-botanical transition-all duration-300">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-sage-600">
+              Bestellingen
             </CardTitle>
+            <ShoppingBag className="h-4 w-4 text-sage-400" />
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold text-sage-600">{stats.totalOrders}</p>
-            <p className="text-xs text-sage-500 mt-1">Totaal geplaatst</p>
+            <div className="text-2xl font-bold text-sage-600">{orderCount || 0}</div>
+            <Link href="/account/orders" className="text-xs text-sage-500 hover:text-sage-600 mt-1 inline-block">
+              Bekijk alle bestellingen →
+            </Link>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center justify-between">
-              <span className="text-sm font-medium text-sage-600">Downloads</span>
-              <Download className="h-4 w-4 text-sage-400" />
+        <Card className="group hover:shadow-botanical transition-all duration-300">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-sage-600">
+              Downloads
             </CardTitle>
+            <Download className="h-4 w-4 text-sage-400" />
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold text-sage-600">{stats.totalDownloads}</p>
-            <p className="text-xs text-sage-500 mt-1">Producten gedownload</p>
+            <div className="text-2xl font-bold text-sage-600">{downloadCount || 0}</div>
+            <Link href="/account/downloads" className="text-xs text-sage-500 hover:text-sage-600 mt-1 inline-block">
+              Ga naar downloads →
+            </Link>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center justify-between">
-              <span className="text-sm font-medium text-sage-600">Favorieten</span>
-              <Heart className="h-4 w-4 text-sage-400" />
+        <Card className="group hover:shadow-botanical transition-all duration-300">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-sage-600">
+              Verlanglijst
             </CardTitle>
+            <Heart className="h-4 w-4 text-sage-400" />
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold text-sage-600">{stats.wishlistItems}</p>
-            <p className="text-xs text-sage-500 mt-1">In je wishlist</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center justify-between">
-              <span className="text-sm font-medium text-sage-600">Totaal Besteed</span>
-              <TrendingUp className="h-4 w-4 text-sage-400" />
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold text-sage-600">{formatPrice(stats.totalSpent)}</p>
-            <p className="text-xs text-sage-500 mt-1">Sinds lid</p>
+            <div className="text-2xl font-bold text-sage-600">0</div>
+            <Link href="/account/wishlist" className="text-xs text-sage-500 hover:text-sage-600 mt-1 inline-block">
+              Bekijk verlanglijst →
+            </Link>
           </CardContent>
         </Card>
       </div>
 
-      {/* Subscription Status */}
-      <Card className="bg-sage-50 border-sage-200">
+      {/* Recent Orders */}
+      <Card>
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span className="text-lg">Abonnement Status</span>
-            <span className="text-sm font-normal bg-sage-400 text-white px-3 py-1 rounded-full">
-              Actief
-            </span>
+          <CardTitle className="font-serif text-xl text-sage-600">
+            Recente Bestellingen
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-semibold text-sage-600">Basic Plan</p>
-              <p className="text-sm text-sage-500">€19/maand • Onbeperkt downloads</p>
+          {recentOrders && recentOrders.length > 0 ? (
+            <div className="space-y-4">
+              {recentOrders.map((order) => (
+                <div key={order.id} className="flex items-center justify-between py-3 border-b last:border-0">
+                  <div>
+                    <p className="font-medium text-sage-600">
+                      Bestelling #{order.order_number}
+                    </p>
+                    <p className="text-sm text-sage-500">
+                      {new Date(order.created_at).toLocaleDateString('nl-NL')}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-medium text-sage-600">
+                      €{order.total.toFixed(2)}
+                    </p>
+                    <span className={`text-xs px-2 py-1 rounded-full ${
+                      order.status === 'completed' 
+                        ? 'bg-mint-100 text-mint-700'
+                        : order.status === 'pending'
+                        ? 'bg-yellow-100 text-yellow-700'
+                        : 'bg-sage-100 text-sage-700'
+                    }`}>
+                      {order.status === 'completed' ? 'Voltooid' : 
+                       order.status === 'pending' ? 'In behandeling' : order.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              <Link href="/account/orders">
+                <Button variant="outline" className="w-full mt-4">
+                  Bekijk alle bestellingen
+                </Button>
+              </Link>
             </div>
-            <Button variant="outline" asChild>
-              <Link href="/account/subscription">Beheer Abonnement</Link>
-            </Button>
-          </div>
+          ) : (
+            <div className="text-center py-8">
+              <FileText className="h-12 w-12 text-sage-300 mx-auto mb-4" />
+              <p className="text-sage-500 mb-4">Je hebt nog geen bestellingen geplaatst</p>
+              <Link href="/products">
+                <Button>
+                  Ontdek onze producten
+                </Button>
+              </Link>
+            </div>
+          )}
         </CardContent>
       </Card>
-
-      {/* Recent Activity */}
-      <div className="grid lg:grid-cols-2 gap-8">
-        {/* Recent Orders */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-serif text-xl font-semibold text-sage-600">
-              Recente Bestellingen
-            </h2>
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/account/orders">Bekijk alle</Link>
-            </Button>
-          </div>
-          <div className="space-y-3">
-            {recentOrders.map((order) => (
-              <Card key={order.id}>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-sage-50 rounded-full p-2">
-                        <Package className="h-4 w-4 text-sage-500" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-sage-600">{order.orderNumber}</p>
-                        <p className="text-sm text-sage-500">
-                          {new Date(order.date).toLocaleDateString('nl-NL')} • {order.items} items
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-sage-600">{formatPrice(order.total)}</p>
-                      <p className="text-xs text-sage-500 capitalize">{order.status}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-
-        {/* Recent Downloads */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-serif text-xl font-semibold text-sage-600">
-              Recente Downloads
-            </h2>
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/account/downloads">Bekijk alle</Link>
-            </Button>
-          </div>
-          <div className="space-y-3">
-            {recentDownloads.map((download) => (
-              <Card key={download.id}>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-sage-50 rounded-full p-2">
-                        <Download className="h-4 w-4 text-sage-500" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-sage-600">{download.title}</p>
-                        <p className="text-sm text-sage-500">
-                          {new Date(download.downloadDate).toLocaleDateString('nl-NL')}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <Button size="sm" variant="outline">
-                        Download
-                      </Button>
-                      <p className="text-xs text-sage-500 mt-1">
-                        {download.downloadsLeft} van 5 over
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </div>
 
       {/* Quick Actions */}
-      <Card className="bg-earth-warm border-sage-200">
-        <CardHeader>
-          <CardTitle className="text-lg">Snelle Acties</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-3">
-            <Button variant="outline" asChild>
-              <Link href="/products">Nieuwe Producten Ontdekken</Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link href="/account/wishlist">Bekijk Wishlist</Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link href="/instagram">Instagram Feed</Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid md:grid-cols-2 gap-6">
+        <Card className="hover:shadow-botanical transition-all duration-300">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Profiel Instellingen
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sage-500 mb-4">
+              Update je persoonlijke gegevens en voorkeuren
+            </p>
+            <Link href="/account/profile">
+              <Button variant="outline">
+                Bewerk profiel
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-botanical transition-all duration-300">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              Account Beveiliging
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sage-500 mb-4">
+              Wijzig je wachtwoord en beveiligingsinstellingen
+            </p>
+            <Link href="/account/settings">
+              <Button variant="outline">
+                Beveiligingsinstellingen
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

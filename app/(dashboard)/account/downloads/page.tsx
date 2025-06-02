@@ -6,9 +6,10 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { formatDate } from '@/lib/utils'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 import DownloadButton from '@/components/download-button'
+import { toast } from 'sonner'
 
 interface ProductFile {
   id: string
@@ -43,7 +44,7 @@ export default function DownloadsPage() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
-  const supabase = createClientComponentClient()
+  const supabase = createClient()
   const router = useRouter()
 
   useEffect(() => {
@@ -59,39 +60,68 @@ export default function DownloadsPage() {
         return
       }
 
-      // Fetch user's paid orders with products and files
-      const { data: ordersData, error } = await supabase
+      // First, fetch user's paid orders
+      const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
-        .select(`
-          *,
-          order_items(
-            *,
-            product:products(
-              *,
-              product_files(*)
-            )
-          )
-        `)
+        .select('*')
         .eq('user_id', user.id)
         .eq('payment_status', 'paid')
         .order('created_at', { ascending: false })
 
-      if (error) throw error
+      if (ordersError) throw ordersError
 
-      // Also fetch free products (if user has accessed them)
-      const { data: freeProducts } = await supabase
+      if (!ordersData || ordersData.length === 0) {
+        setOrders([])
+        return
+      }
+
+      // Fetch order items for these orders
+      const orderIds = ordersData.map(order => order.id)
+      const { data: orderItemsData, error: itemsError } = await supabase
+        .from('order_items')
+        .select('*')
+        .in('order_id', orderIds)
+
+      if (itemsError) throw itemsError
+
+      // Fetch products for the order items
+      const productIds = orderItemsData?.map(item => item.product_id) || []
+      const { data: productsData, error: productsError } = await supabase
         .from('products')
-        .select(`
-          *,
-          product_files(*)
-        `)
-        .eq('access_type', 'free')
-        .eq('status', 'active')
+        .select('*')
+        .in('id', productIds)
 
-      // Combine paid and free products
-      setOrders(ordersData || [])
+      if (productsError) throw productsError
+
+      // Fetch product files for these products
+      const { data: filesData, error: filesError } = await supabase
+        .from('product_files')
+        .select('*')
+        .in('product_id', productIds)
+
+      if (filesError) throw filesError
+
+      // Combine all data
+      const ordersWithItems = ordersData.map(order => ({
+        ...order,
+        order_items: orderItemsData?.filter(item => item.order_id === order.id).map(item => {
+          const product = productsData?.find(p => p.id === item.product_id)
+          const productFiles = filesData?.filter(f => f.product_id === item.product_id) || []
+          
+          return {
+            ...item,
+            product: {
+              ...product,
+              product_files: productFiles
+            }
+          }
+        }) || []
+      }))
+
+      setOrders(ordersWithItems)
     } catch (error) {
       console.error('Error fetching downloads:', error)
+      toast.error('Kon downloads niet laden')
     } finally {
       setLoading(false)
     }
@@ -138,10 +168,10 @@ export default function DownloadsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="font-serif text-3xl font-bold text-sage-600 mb-2">
+        <h1 className="font-serif text-2xl md:text-3xl font-bold text-sage-600 mb-2">
           Mijn Downloads
         </h1>
-        <p className="text-sage-500">
+        <p className="text-sage-500 text-sm md:text-base">
           Download je gekochte producten. Downloads zijn 30 dagen geldig na aankoop.
         </p>
       </div>
@@ -188,7 +218,7 @@ export default function DownloadsPage() {
       </Card>
 
       {/* Downloads Grid */}
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         {filteredItems.map((item, index) => {
           const { days: daysRemaining, expiryDate } = getDaysRemaining(item.orderDate)
           const isExpiringSoon = daysRemaining <= 7 && daysRemaining > 0

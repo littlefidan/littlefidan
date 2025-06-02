@@ -1,185 +1,242 @@
-import { Package, Download, Eye, ChevronRight } from 'lucide-react'
+'use client'
+
+import { useState, useEffect } from 'react'
+import { createClient } from '@/utils/supabase/client'
+import { useRouter } from 'next/navigation'
+import { ShoppingBag, Clock, Package, FileText, ChevronRight } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { formatPrice } from '@/lib/utils'
-import Link from 'next/link'
+import { formatDate, formatPrice } from '@/lib/utils'
 
-// Mock data - replace with Supabase query
-const orders = [
-  {
-    id: '1',
-    orderNumber: 'ORD-2024-001',
-    date: '2024-12-15T10:30:00',
-    status: 'completed',
-    total: 67.85,
-    items: [
-      {
-        id: '1',
-        title: 'Seizoenskaarten - Winter',
-        price: 12.95,
-        image: 'https://placehold.co/100x100/9CAA8B/FFFFFF?text=Winter',
-      },
-      {
-        id: '2',
-        title: 'Mindful Kleuren - Botanisch',
-        price: 9.95,
-        image: 'https://placehold.co/100x100/D4A786/FFFFFF?text=Kleuren',
-      },
-      {
-        id: '3',
-        title: 'Culturele Feesten - Nederland',
-        price: 18.95,
-        image: 'https://placehold.co/100x100/E8B4A0/FFFFFF?text=Feesten',
-      },
-    ],
-  },
-  {
-    id: '2',
-    orderNumber: 'ORD-2024-002',
-    date: '2024-12-10T14:20:00',
-    status: 'completed',
-    total: 28.90,
-    items: [
-      {
-        id: '4',
-        title: 'Natuurlijke Telkaarten',
-        price: 15.95,
-        image: 'https://placehold.co/100x100/8B9A7A/FFFFFF?text=Tellen',
-      },
-      {
-        id: '5',
-        title: 'Seizoenskaarten - Herfst',
-        price: 12.95,
-        image: 'https://placehold.co/100x100/D4A786/FFFFFF?text=Herfst',
-      },
-    ],
-  },
-]
-
-const statusColors = {
-  completed: 'bg-green-100 text-green-800',
-  pending: 'bg-yellow-100 text-yellow-800',
-  failed: 'bg-red-100 text-red-800',
-  refunded: 'bg-gray-100 text-gray-800',
+interface OrderItem {
+  id: string
+  product_name: string
+  product_price: number
+  quantity: number
+  total: number
 }
 
-const statusLabels = {
-  completed: 'Voltooid',
-  pending: 'In behandeling',
-  failed: 'Mislukt',
-  refunded: 'Terugbetaald',
+interface Order {
+  id: string
+  order_number: string
+  status: string
+  payment_status: string
+  subtotal: number
+  tax: number
+  total: number
+  created_at: string
+  order_items: OrderItem[]
 }
 
 export default function OrdersPage() {
+  const [orders, setOrders] = useState<Order[]>([])
+  const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState<'all' | 'pending' | 'completed' | 'cancelled'>('all')
+  const supabase = createClient()
+  const router = useRouter()
+
+  useEffect(() => {
+    fetchOrders()
+  }, [])
+
+  const fetchOrders = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) {
+        router.push('/login')
+        return
+      }
+
+      let query = supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items(*)
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+
+      const { data, error } = await query
+
+      if (error) throw error
+
+      setOrders(data || [])
+    } catch (error) {
+      console.error('Error fetching orders:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const filteredOrders = orders.filter(order => {
+    if (filter === 'all') return true
+    return order.status === filter
+  })
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'bg-mint-100 text-mint-700'
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-700'
+      case 'cancelled':
+      case 'refunded':
+        return 'bg-red-100 text-red-700'
+      default:
+        return 'bg-sage-100 text-sage-700'
+    }
+  }
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'Voltooid'
+      case 'pending':
+        return 'In behandeling'
+      case 'processing':
+        return 'Wordt verwerkt'
+      case 'cancelled':
+        return 'Geannuleerd'
+      case 'refunded':
+        return 'Terugbetaald'
+      default:
+        return status
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sage-500"></div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="font-serif text-3xl font-bold text-sage-600 mb-2">
+        <h1 className="font-serif text-2xl md:text-3xl font-bold text-sage-600 mb-2">
           Mijn Bestellingen
         </h1>
-        <p className="text-sage-500">
-          Bekijk je bestelgeschiedenis en download je producten
+        <p className="text-sage-500 text-sm md:text-base">
+          Bekijk je bestelgeschiedenis en download je producten.
         </p>
       </div>
 
-      {/* Orders List */}
-      <div className="space-y-6">
-        {orders.map((order) => (
-          <Card key={order.id}>
-            <CardContent className="p-6">
-              {/* Order Header */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 pb-4 border-b border-sage-100">
-                <div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="font-semibold text-sage-600">{order.orderNumber}</h3>
-                    <span className={`text-xs px-2 py-1 rounded-full ${statusColors[order.status]}`}>
-                      {statusLabels[order.status]}
-                    </span>
-                  </div>
-                  <p className="text-sm text-sage-500">
-                    {new Date(order.date).toLocaleDateString('nl-NL', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </p>
-                </div>
-                <div className="text-right mt-4 md:mt-0">
-                  <p className="text-sm text-sage-500 mb-1">Totaal</p>
-                  <p className="font-serif text-2xl font-semibold text-sage-600">
-                    {formatPrice(order.total)}
-                  </p>
-                </div>
-              </div>
-
-              {/* Order Items */}
-              <div className="space-y-4">
-                {order.items.map((item) => (
-                  <div key={item.id} className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-xl overflow-hidden bg-sage-50 flex-shrink-0">
-                      <img
-                        src={item.image}
-                        alt={item.title}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-sage-600 truncate">{item.title}</h4>
-                      <p className="text-sm text-sage-500">{formatPrice(item.price)}</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline">
-                        <Download className="h-4 w-4 mr-1" />
-                        Download
-                      </Button>
-                      <Button size="sm" variant="ghost" asChild>
-                        <Link href={`/products/${item.id}`}>
-                          <Eye className="h-4 w-4" />
-                        </Link>
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Order Actions */}
-              <div className="flex items-center justify-between mt-6 pt-4 border-t border-sage-100">
-                <Button variant="outline" size="sm">
-                  <Download className="h-4 w-4 mr-2" />
-                  Download Alles
-                </Button>
-                <Button variant="ghost" size="sm">
-                  Bekijk Factuur
-                  <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+      {/* Filter Tabs */}
+      <div className="flex flex-wrap gap-2">
+        {(['all', 'pending', 'completed', 'cancelled'] as const).map((status) => (
+          <button
+            key={status}
+            onClick={() => setFilter(status)}
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+              filter === status
+                ? 'bg-sage-500 text-white'
+                : 'bg-sage-100 text-sage-600 hover:bg-sage-200'
+            }`}
+          >
+            {status === 'all' ? 'Alle' : getStatusText(status)}
+            {status === 'all' && ` (${orders.length})`}
+            {status !== 'all' && ` (${orders.filter(o => o.status === status).length})`}
+          </button>
         ))}
       </div>
 
-      {/* Empty State */}
-      {orders.length === 0 && (
+      {/* Orders List */}
+      {filteredOrders.length === 0 ? (
         <Card>
           <CardContent className="p-12 text-center">
             <div className="mx-auto w-16 h-16 bg-sage-50 rounded-full flex items-center justify-center mb-4">
-              <Package className="h-8 w-8 text-sage-400" />
+              <ShoppingBag className="h-8 w-8 text-sage-400" />
             </div>
             <h3 className="font-semibold text-sage-600 mb-2">
-              Nog geen bestellingen
+              Geen bestellingen gevonden
             </h3>
             <p className="text-sage-500 mb-6">
-              Je hebt nog geen producten gekocht. Ontdek onze collectie!
+              {filter === 'all' 
+                ? 'Je hebt nog geen bestellingen geplaatst.'
+                : `Je hebt geen ${getStatusText(filter).toLowerCase()} bestellingen.`
+              }
             </p>
             <Button asChild>
-              <Link href="/products">
-                Bekijk Producten
-              </Link>
+              <a href="/products">Ontdek onze producten</a>
             </Button>
           </CardContent>
         </Card>
+      ) : (
+        <div className="space-y-4">
+          {filteredOrders.map((order) => (
+            <Card key={order.id} className="overflow-hidden hover:shadow-botanical transition-all">
+              <CardContent className="p-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
+                  <div>
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="font-semibold text-sage-600">
+                        Bestelling #{order.order_number}
+                      </h3>
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
+                        {getStatusText(order.status)}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-4 text-sm text-sage-500">
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-4 w-4" />
+                        {formatDate(order.created_at, 'nl-NL')}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Package className="h-4 w-4" />
+                        {order.order_items.length} {order.order_items.length === 1 ? 'product' : 'producten'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right mt-4 md:mt-0">
+                    <p className="text-2xl font-bold text-sage-600">
+                      {formatPrice(order.total)}
+                    </p>
+                    {order.payment_status === 'paid' && (
+                      <p className="text-sm text-mint-600">Betaald</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Order Items */}
+                <div className="border-t border-sage-200 pt-4 space-y-3">
+                  {order.order_items.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-sage-100 rounded-lg flex items-center justify-center">
+                          <FileText className="h-6 w-6 text-sage-500" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-sage-600">{item.product_name}</p>
+                          <p className="text-sm text-sage-500">
+                            {item.quantity}x {formatPrice(item.product_price)}
+                          </p>
+                        </div>
+                      </div>
+                      <p className="font-medium text-sage-600">
+                        {formatPrice(item.total)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Actions */}
+                {order.status === 'completed' && order.payment_status === 'paid' && (
+                  <div className="border-t border-sage-200 pt-4 mt-4">
+                    <Button asChild variant="outline" className="w-full md:w-auto">
+                      <a href="/account/downloads">
+                        Ga naar downloads
+                        <ChevronRight className="ml-2 h-4 w-4" />
+                      </a>
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       )}
     </div>
   )

@@ -50,7 +50,7 @@ export default function LoginPage() {
           router.push('/account')
         }
       }
-    } catch (err) {
+    } catch {
       setError('Er is iets misgegaan. Probeer het opnieuw.')
     } finally {
       setLoading(false)

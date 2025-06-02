@@ -35,13 +35,13 @@ export function ProductCard({ product }: ProductCardProps) {
   const handleAddToCart = () => {
     addItem({
       id: product.id,
-      title: product.title,
+      name: product.title,
       price: product.price,
       slug: product.slug,
       image: imageUrl,
-      botanicalTheme: product.botanicalTheme,
-      ageRange: product.ageRange,
-    })
+      ...(product.botanicalTheme && { botanicalTheme: product.botanicalTheme }),
+      ...(product.ageRange && { ageRange: product.ageRange }),
+    } as any)
   }
 
   const handleWishlistToggle = () => {
@@ -50,7 +50,7 @@ export function ProductCard({ product }: ProductCardProps) {
     } else {
       addToWishlist({
         id: product.id,
-        title: product.title,
+        name: product.title,
         price: product.price,
         slug: product.slug,
         image: imageUrl,

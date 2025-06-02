@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { toast } from 'sonner'
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -20,15 +21,29 @@ export default function ContactPage() {
     e.preventDefault()
     setIsSubmitting(true)
     
-    // TODO: Implement form submission
-    console.log('Contact form:', formData)
-    
-    // Simulate submission
-    setTimeout(() => {
-      alert('Bedankt voor je bericht! We nemen zo snel mogelijk contact met je op.')
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Er ging iets mis')
+      }
+
+      toast.success(data.message || 'Bedankt voor je bericht!')
       setFormData({ name: '', email: '', subject: '', message: '' })
+    } catch (error) {
+      console.error('Contact form error:', error)
+      toast.error(error instanceof Error ? error.message : 'Er ging iets mis. Probeer het opnieuw.')
+    } finally {
       setIsSubmitting(false)
-    }, 1000)
+    }
   }
 
   return (

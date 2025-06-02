@@ -13,7 +13,8 @@ import {
   Bars3Icon,
   XMarkIcon,
   ArrowLeftOnRectangleIcon,
-  TagIcon
+  TagIcon,
+  EnvelopeIcon
 } from '@heroicons/react/24/outline'
 import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
@@ -24,6 +25,7 @@ const menuItems = [
   { name: 'Producten', href: '/admin/products', icon: ShoppingBagIcon },
   { name: 'Categorieën', href: '/admin/categories', icon: TagIcon },
   { name: 'Bestellingen', href: '/admin/orders', icon: ClipboardDocumentListIcon },
+  { name: 'Nieuwsbrief', href: '/admin/subscribers', icon: EnvelopeIcon },
   { name: 'Bestanden', href: '/admin/files', icon: DocumentTextIcon },
   { name: 'Instellingen', href: '/admin/settings', icon: CogIcon },
 ]

@@ -1,7 +1,5 @@
-'use client'
-
-import React, { useEffect, useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
 import { 
   CurrencyEuroIcon, 
   ShoppingBagIcon, 
@@ -10,174 +8,132 @@ import {
   ArrowUpIcon,
   ArrowDownIcon
 } from '@heroicons/react/24/outline'
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  BarElement,
-  ArcElement
-} from 'chart.js'
-import { Line, Bar, Doughnut } from 'react-chartjs-2'
+import DashboardCharts from '@/components/admin/dashboard-charts'
+import RecentActivity from '@/components/admin/recent-activity'
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  ArcElement,
-  Title,
-  Tooltip,
-  Legend
-)
-
-interface DashboardStats {
-  totalRevenue: number
-  totalOrders: number
-  totalProducts: number
-  totalCustomers: number
-  revenueChange: number
-  ordersChange: number
-  productsChange: number
-  customersChange: number
+async function getDashboardStats() {
+  const supabase = createServerComponentClient({ cookies })
+  
+  // Get current date and date 30 days ago
+  const now = new Date()
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+  const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000)
+  
+  // Fetch current period stats
+  const { data: currentOrders } = await supabase
+    .from('orders')
+    .select('total, created_at')
+    .gte('created_at', thirtyDaysAgo.toISOString())
+    .eq('payment_status', 'paid')
+  
+  // Fetch previous period stats for comparison
+  const { data: previousOrders } = await supabase
+    .from('orders')
+    .select('total')
+    .gte('created_at', sixtyDaysAgo.toISOString())
+    .lt('created_at', thirtyDaysAgo.toISOString())
+    .eq('payment_status', 'paid')
+  
+  // Calculate revenue
+  const currentRevenue = currentOrders?.reduce((sum, order) => sum + (order.total || 0), 0) || 0
+  const previousRevenue = previousOrders?.reduce((sum, order) => sum + (order.total || 0), 0) || 0
+  const revenueChange = previousRevenue > 0 
+    ? ((currentRevenue - previousRevenue) / previousRevenue * 100).toFixed(1)
+    : 0
+  
+  // Get total counts
+  const { count: totalOrders } = await supabase
+    .from('orders')
+    .select('*', { count: 'exact', head: true })
+  
+  const { count: currentPeriodOrders } = await supabase
+    .from('orders')
+    .select('*', { count: 'exact', head: true })
+    .gte('created_at', thirtyDaysAgo.toISOString())
+  
+  const { count: previousPeriodOrders } = await supabase
+    .from('orders')
+    .select('*', { count: 'exact', head: true })
+    .gte('created_at', sixtyDaysAgo.toISOString())
+    .lt('created_at', thirtyDaysAgo.toISOString())
+  
+  const ordersChange = previousPeriodOrders && previousPeriodOrders > 0
+    ? ((currentPeriodOrders! - previousPeriodOrders) / previousPeriodOrders * 100).toFixed(1)
+    : 0
+  
+  const { count: totalProducts } = await supabase
+    .from('products')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'active')
+  
+  const { count: totalCustomers } = await supabase
+    .from('profiles')
+    .select('*', { count: 'exact', head: true })
+  
+  // Get customer growth
+  const { count: newCustomers } = await supabase
+    .from('profiles')
+    .select('*', { count: 'exact', head: true })
+    .gte('created_at', thirtyDaysAgo.toISOString())
+  
+  const { count: previousNewCustomers } = await supabase
+    .from('profiles')
+    .select('*', { count: 'exact', head: true })
+    .gte('created_at', sixtyDaysAgo.toISOString())
+    .lt('created_at', thirtyDaysAgo.toISOString())
+  
+  const customersChange = previousNewCustomers && previousNewCustomers > 0
+    ? ((newCustomers! - previousNewCustomers) / previousNewCustomers * 100).toFixed(1)
+    : 0
+  
+  // Get revenue by month for chart
+  const { data: monthlyRevenue } = await supabase
+    .from('orders')
+    .select('total, created_at')
+    .eq('payment_status', 'paid')
+    .gte('created_at', new Date(now.getFullYear(), now.getMonth() - 5, 1).toISOString())
+    .order('created_at')
+  
+  // Get orders by day for last week
+  const { data: weeklyOrders } = await supabase
+    .from('orders')
+    .select('id, created_at')
+    .gte('created_at', new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString())
+    .order('created_at')
+  
+  // Get category distribution
+  const { data: categoryData } = await supabase
+    .from('products')
+    .select('category')
+    .eq('status', 'active')
+  
+  return {
+    stats: {
+      totalRevenue: currentRevenue,
+      totalOrders: totalOrders || 0,
+      totalProducts: totalProducts || 0,
+      totalCustomers: totalCustomers || 0,
+      revenueChange: Number(revenueChange),
+      ordersChange: Number(ordersChange),
+      productsChange: 0, // Products don't have a growth rate
+      customersChange: Number(customersChange)
+    },
+    chartData: {
+      monthlyRevenue: monthlyRevenue || [],
+      weeklyOrders: weeklyOrders || [],
+      categoryData: categoryData || [],
+      currentOrders: currentOrders || []
+    }
+  }
 }
 
-export default function AdminDashboard() {
-  const [stats, setStats] = useState<DashboardStats>({
-    totalRevenue: 0,
-    totalOrders: 0,
-    totalProducts: 0,
-    totalCustomers: 0,
-    revenueChange: 0,
-    ordersChange: 0,
-    productsChange: 0,
-    customersChange: 0
-  })
-  const [loading, setLoading] = useState(true)
-  const supabase = createClientComponentClient()
-
-  useEffect(() => {
-    fetchDashboardStats()
-  }, [])
-
-  const fetchDashboardStats = async () => {
-    try {
-      // Fetch total revenue
-      const { data: orders } = await supabase
-        .from('orders')
-        .select('total_amount')
-        .eq('status', 'completed')
-      
-      const totalRevenue = orders?.reduce((sum, order) => sum + order.total_amount, 0) || 0
-
-      // Fetch total orders
-      const { count: totalOrders } = await supabase
-        .from('orders')
-        .select('*', { count: 'exact', head: true })
-
-      // Fetch total products
-      const { count: totalProducts } = await supabase
-        .from('products')
-        .select('*', { count: 'exact', head: true })
-
-      // Fetch total customers
-      const { count: totalCustomers } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-
-      setStats({
-        totalRevenue,
-        totalOrders: totalOrders || 0,
-        totalProducts: totalProducts || 0,
-        totalCustomers: totalCustomers || 0,
-        revenueChange: 12.5, // Mock data - calculate from real data
-        ordersChange: 8.3,
-        productsChange: -2.1,
-        customersChange: 15.7
-      })
-    } catch (error) {
-      console.error('Error fetching dashboard stats:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Chart data
-  const revenueChartData = {
-    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-    datasets: [
-      {
-        label: 'Revenue',
-        data: [3200, 4100, 3800, 5200, 4900, 5800],
-        borderColor: 'rgb(168, 213, 186)',
-        backgroundColor: 'rgba(168, 213, 186, 0.1)',
-        tension: 0.4
-      }
-    ]
-  }
-
-  const ordersChartData = {
-    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-    datasets: [
-      {
-        label: 'Orders',
-        data: [12, 19, 15, 22, 18, 25, 20],
-        backgroundColor: 'rgba(155, 139, 122, 0.8)',
-        borderColor: 'rgb(155, 139, 122)',
-        borderWidth: 1
-      }
-    ]
-  }
-
-  const categoryChartData = {
-    labels: ['Activiteitenboeken', 'Educatief', 'Knutselpakketten', 'Digitaal', 'Overig'],
-    datasets: [
-      {
-        data: [35, 25, 20, 15, 5],
-        backgroundColor: [
-          'rgba(168, 213, 186, 0.8)',
-          'rgba(123, 132, 113, 0.8)',
-          'rgba(155, 139, 122, 0.8)',
-          'rgba(181, 212, 232, 0.8)',
-          'rgba(212, 165, 116, 0.8)'
-        ],
-        borderWidth: 0
-      }
-    ]
-  }
-
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        display: false
-      }
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        grid: {
-          color: 'rgba(0, 0, 0, 0.05)'
-        }
-      },
-      x: {
-        grid: {
-          display: false
-        }
-      }
-    }
-  }
+export default async function AdminDashboard() {
+  const { stats, chartData } = await getDashboardStats()
 
   const statCards = [
     {
       title: 'Totale Omzet',
-      value: `€${stats.totalRevenue.toLocaleString()}`,
+      value: `€${stats.totalRevenue.toFixed(2).replace('.', ',')}`,
       change: stats.revenueChange,
       icon: CurrencyEuroIcon,
       color: 'mint'
@@ -187,14 +143,14 @@ export default function AdminDashboard() {
       value: stats.totalOrders.toString(),
       change: stats.ordersChange,
       icon: ShoppingBagIcon,
-      color: 'primary'
+      color: 'sage'
     },
     {
-      title: 'Totale Producten',
+      title: 'Actieve Producten',
       value: stats.totalProducts.toString(),
       change: stats.productsChange,
       icon: DocumentTextIcon,
-      color: 'olive'
+      color: 'taupe'
     },
     {
       title: 'Totale Klanten',
@@ -205,120 +161,52 @@ export default function AdminDashboard() {
     }
   ]
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
-    )
-  }
-
   return (
     <div>
-      <h1 className="text-3xl font-serif text-primary-800 mb-8">Dashboard</h1>
+      <h1 className="text-3xl font-serif text-sage-600 mb-8">Dashboard</h1>
       
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {statCards.map((stat, index) => (
-          <div key={index} className="bg-white rounded-2xl shadow-soft p-6">
+          <div key={index} className="bg-white rounded-2xl shadow-sm p-6 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-4">
               <div className={`p-3 rounded-xl ${
                 stat.color === 'mint' ? 'bg-mint-100' :
-                stat.color === 'primary' ? 'bg-primary-100' :
-                stat.color === 'olive' ? 'bg-olive-100' :
+                stat.color === 'sage' ? 'bg-sage-100' :
+                stat.color === 'taupe' ? 'bg-taupe-100' :
                 'bg-babyblue-100'
               }`}>
                 <stat.icon className={`h-6 w-6 ${
                   stat.color === 'mint' ? 'text-mint-500' :
-                  stat.color === 'primary' ? 'text-primary-600' :
-                  stat.color === 'olive' ? 'text-olive-600' :
+                  stat.color === 'sage' ? 'text-sage-600' :
+                  stat.color === 'taupe' ? 'text-taupe-600' :
                   'text-babyblue-600'
                 }`} />
               </div>
-              <div className={`flex items-center text-sm ${
-                stat.change >= 0 ? 'text-mint-500' : 'text-red-500'
-              }`}>
-                {stat.change >= 0 ? (
-                  <ArrowUpIcon className="h-4 w-4 mr-1" />
-                ) : (
-                  <ArrowDownIcon className="h-4 w-4 mr-1" />
-                )}
-                {Math.abs(stat.change)}%
-              </div>
+              {stat.change !== 0 && (
+                <div className={`flex items-center text-sm ${
+                  stat.change >= 0 ? 'text-mint-500' : 'text-red-500'
+                }`}>
+                  {stat.change >= 0 ? (
+                    <ArrowUpIcon className="h-4 w-4 mr-1" />
+                  ) : (
+                    <ArrowDownIcon className="h-4 w-4 mr-1" />
+                  )}
+                  {Math.abs(stat.change)}%
+                </div>
+              )}
             </div>
-            <h3 className="text-2xl font-semibold text-primary-800">{stat.value}</h3>
-            <p className="text-sm text-neutral-medium mt-1">{stat.title}</p>
+            <h3 className="text-2xl font-semibold text-sage-600">{stat.value}</h3>
+            <p className="text-sm text-sage-500 mt-1">{stat.title}</p>
           </div>
         ))}
       </div>
 
-      {/* Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Revenue Chart */}
-        <div className="lg:col-span-2 bg-white rounded-2xl shadow-soft p-6">
-          <h3 className="text-lg font-semibold text-primary-800 mb-4">Omzet Overzicht</h3>
-          <div className="h-64">
-            <Line data={revenueChartData} options={chartOptions} />
-          </div>
-        </div>
-
-        {/* Category Distribution */}
-        <div className="bg-white rounded-2xl shadow-soft p-6">
-          <h3 className="text-lg font-semibold text-primary-800 mb-4">Product Categorieën</h3>
-          <div className="h-64">
-            <Doughnut 
-              data={categoryChartData} 
-              options={{
-                ...chartOptions,
-                plugins: {
-                  legend: {
-                    display: true,
-                    position: 'bottom'
-                  }
-                }
-              }} 
-            />
-          </div>
-        </div>
-
-        {/* Weekly Orders */}
-        <div className="lg:col-span-3 bg-white rounded-2xl shadow-soft p-6">
-          <h3 className="text-lg font-semibold text-primary-800 mb-4">Wekelijkse Bestellingen</h3>
-          <div className="h-64">
-            <Bar data={ordersChartData} options={chartOptions} />
-          </div>
-        </div>
-      </div>
+      {/* Charts */}
+      <DashboardCharts chartData={chartData} />
 
       {/* Recent Activity */}
-      <div className="mt-8 bg-white rounded-2xl shadow-soft p-6">
-        <h3 className="text-lg font-semibold text-primary-800 mb-4">Recente Activiteit</h3>
-        <div className="space-y-4">
-          {[
-            { action: 'Nieuwe bestelling geplaatst', user: 'Emma van der Berg', time: '2 minuten geleden', type: 'order' },
-            { action: 'Product toegevoegd', item: 'Lente Activiteitenboek', time: '15 minuten geleden', type: 'product' },
-            { action: 'Nieuwe klant geregistreerd', user: 'Sophie de Vries', time: '1 uur geleden', type: 'customer' },
-            { action: 'Bestelling afgerond', order: '#1234', time: '2 uur geleden', type: 'order' },
-          ].map((activity, index) => (
-            <div key={index} className="flex items-center justify-between py-3 border-b border-taupe-100 last:border-0">
-              <div className="flex items-center">
-                <div className={`w-2 h-2 rounded-full mr-3 ${
-                  activity.type === 'order' ? 'bg-mint-500' :
-                  activity.type === 'product' ? 'bg-primary-500' :
-                  'bg-babyblue-500'
-                }`} />
-                <div>
-                  <p className="text-sm font-medium text-primary-800">{activity.action}</p>
-                  <p className="text-xs text-neutral-medium">
-                    {activity.user || activity.item || activity.order}
-                  </p>
-                </div>
-              </div>
-              <span className="text-xs text-neutral-medium">{activity.time}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+      <RecentActivity />
     </div>
   )
 }

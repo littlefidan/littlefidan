@@ -1,237 +1,250 @@
 'use client'
 
-import { useState } from 'react'
-import { Camera, Save } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { createClient } from '@/utils/supabase/client'
+import { useRouter } from 'next/navigation'
+import { User, Camera, Save } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Textarea } from '@/components/ui/textarea'
+import { toast } from 'sonner'
+
+interface Profile {
+  id: string
+  email: string
+  full_name: string | null
+  avatar_url: string | null
+  created_at: string
+  updated_at: string
+}
 
 export default function ProfilePage() {
-  const [profile, setProfile] = useState({
-    fullName: 'Maria van der Berg',
-    email: 'maria@example.com',
-    instagramHandle: '@mariavdb',
-    phone: '+31 6 12345678',
-    preferredLanguage: 'nl',
-    culturalBackground: 'Nederlandse',
-    children: [
-      { name: 'Sophie', age: 5 },
-      { name: 'Lucas', age: 3 },
-    ],
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [formData, setFormData] = useState({
+    full_name: '',
+    email: ''
   })
+  
+  const supabase = createClient()
+  const router = useRouter()
 
-  const [isEditing, setIsEditing] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
+  useEffect(() => {
+    fetchProfile()
+  }, [])
 
-  const handleSave = async () => {
-    setIsSaving(true)
-    // TODO: Save to Supabase
-    setTimeout(() => {
-      setIsSaving(false)
-      setIsEditing(false)
-    }, 1000)
+  const fetchProfile = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) {
+        router.push('/login')
+        return
+      }
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+
+      if (error) throw error
+
+      if (data) {
+        setProfile(data)
+        setFormData({
+          full_name: data.full_name || '',
+          email: data.email || user.email || ''
+        })
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error)
+      toast.error('Kon profiel niet laden')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) throw new Error('Niet ingelogd')
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: formData.full_name,
+          email: formData.email,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id)
+
+      if (error) throw error
+
+      toast.success('Profiel bijgewerkt!')
+      fetchProfile()
+    } catch (error: any) {
+      console.error('Error updating profile:', error)
+      toast.error(error.message || 'Kon profiel niet bijwerken')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    })
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sage-500"></div>
+      </div>
+    )
   }
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="font-serif text-3xl font-bold text-sage-600 mb-2">
+        <h1 className="font-serif text-2xl md:text-3xl font-bold text-sage-600 mb-2">
           Mijn Profiel
         </h1>
-        <p className="text-sage-500">
-          Beheer je persoonlijke informatie en voorkeuren
+        <p className="text-sage-500 text-sm md:text-base">
+          Beheer je persoonlijke gegevens en accountinstellingen.
         </p>
       </div>
 
-      {/* Profile Picture */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8">
+        {/* Profile Picture Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Camera className="h-5 w-5" />
+              Profielfoto
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-center">
+            <div className="relative w-32 h-32 mx-auto mb-4">
+              <div className="w-full h-full rounded-full bg-sage-100 flex items-center justify-center">
+                {profile?.avatar_url ? (
+                  <img 
+                    src={profile.avatar_url} 
+                    alt="Profiel" 
+                    className="w-full h-full rounded-full object-cover"
+                  />
+                ) : (
+                  <User className="h-16 w-16 text-sage-400" />
+                )}
+              </div>
+            </div>
+            <p className="text-sm text-sage-500 mb-4">
+              Profielfoto's komen binnenkort beschikbaar
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Profile Form */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Persoonlijke Gegevens</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="full_name">Volledige naam</Label>
+                  <Input
+                    id="full_name"
+                    name="full_name"
+                    type="text"
+                    value={formData.full_name}
+                    onChange={handleChange}
+                    placeholder="Je volledige naam"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="email">E-mailadres</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    placeholder="je@email.nl"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-4">
+                <Button 
+                  type="submit" 
+                  disabled={saving}
+                  className="w-full md:w-auto"
+                >
+                  <Save className="mr-2 h-4 w-4" />
+                  {saving ? 'Opslaan...' : 'Wijzigingen opslaan'}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Account Info */}
       <Card>
         <CardHeader>
-          <CardTitle>Profielfoto</CardTitle>
-          <CardDescription>
-            Upload een foto om je profiel te personaliseren
-          </CardDescription>
+          <CardTitle>Account Informatie</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-6">
-            <div className="relative">
-              <div className="h-24 w-24 rounded-full bg-sage-100 flex items-center justify-center">
-                <span className="text-2xl font-semibold text-sage-600">
-                  {profile.fullName.split(' ').map(n => n[0]).join('')}
-                </span>
-              </div>
-              <button className="absolute bottom-0 right-0 bg-white rounded-full p-2 shadow-soft hover:shadow-md transition-shadow">
-                <Camera className="h-4 w-4 text-sage-600" />
-              </button>
+          <div className="grid md:grid-cols-2 gap-6">
+            <div>
+              <p className="text-sm text-sage-500 mb-1">Account aangemaakt</p>
+              <p className="font-medium text-sage-600">
+                {profile?.created_at ? new Date(profile.created_at).toLocaleDateString('nl-NL', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                }) : '-'}
+              </p>
             </div>
             <div>
-              <Button variant="outline" size="sm">
-                Upload Foto
-              </Button>
-              <p className="text-xs text-sage-500 mt-2">
-                JPG, PNG of GIF. Max 5MB.
+              <p className="text-sm text-sage-500 mb-1">Laatste update</p>
+              <p className="font-medium text-sage-600">
+                {profile?.updated_at ? new Date(profile.updated_at).toLocaleDateString('nl-NL', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                }) : '-'}
               </p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Personal Information */}
-      <Card>
+      {/* Delete Account */}
+      <Card className="border-red-200">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Persoonlijke Informatie</CardTitle>
-              <CardDescription>
-                Update je accountgegevens
-              </CardDescription>
-            </div>
-            {!isEditing && (
-              <Button variant="outline" onClick={() => setIsEditing(true)}>
-                Bewerken
-              </Button>
-            )}
-          </div>
+          <CardTitle className="text-red-600">Gevarenzone</CardTitle>
         </CardHeader>
         <CardContent>
-          <form className="space-y-4">
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="fullName">Volledige naam</Label>
-                <Input
-                  id="fullName"
-                  value={profile.fullName}
-                  onChange={(e) => setProfile({ ...profile, fullName: e.target.value })}
-                  disabled={!isEditing}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">E-mailadres</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={profile.email}
-                  onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                  disabled={!isEditing}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">Telefoonnummer</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  value={profile.phone}
-                  onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                  disabled={!isEditing}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="instagram">Instagram gebruikersnaam</Label>
-                <Input
-                  id="instagram"
-                  value={profile.instagramHandle}
-                  onChange={(e) => setProfile({ ...profile, instagramHandle: e.target.value })}
-                  disabled={!isEditing}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="language">Voorkeurstaal</Label>
-              <select
-                id="language"
-                className="flex h-10 w-full rounded-xl border border-sage-200 bg-white px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                value={profile.preferredLanguage}
-                onChange={(e) => setProfile({ ...profile, preferredLanguage: e.target.value })}
-                disabled={!isEditing}
-              >
-                <option value="nl">Nederlands</option>
-                <option value="en">English</option>
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="cultural">Culturele achtergrond (optioneel)</Label>
-              <Input
-                id="cultural"
-                value={profile.culturalBackground}
-                onChange={(e) => setProfile({ ...profile, culturalBackground: e.target.value })}
-                disabled={!isEditing}
-                placeholder="Bijv. Nederlandse, Marokkaanse, Turkse"
-              />
-            </div>
-
-            {isEditing && (
-              <div className="flex gap-3 pt-4">
-                <Button onClick={handleSave} disabled={isSaving}>
-                  <Save className="mr-2 h-4 w-4" />
-                  {isSaving ? 'Opslaan...' : 'Opslaan'}
-                </Button>
-                <Button variant="outline" onClick={() => setIsEditing(false)}>
-                  Annuleren
-                </Button>
-              </div>
-            )}
-          </form>
-        </CardContent>
-      </Card>
-
-      {/* Children Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Kinderen</CardTitle>
-          <CardDescription>
-            Voeg je kinderen toe om gepersonaliseerde aanbevelingen te krijgen
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {profile.children.map((child, index) => (
-              <div key={index} className="flex items-center justify-between p-3 bg-sage-50 rounded-xl">
-                <div>
-                  <p className="font-medium text-sage-600">{child.name}</p>
-                  <p className="text-sm text-sage-500">{child.age} jaar</p>
-                </div>
-                <Button variant="ghost" size="sm">
-                  Bewerken
-                </Button>
-              </div>
-            ))}
-            <Button variant="outline" className="w-full">
-              + Kind toevoegen
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Account Settings */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Account Instellingen</CardTitle>
-          <CardDescription>
-            Beheer je account voorkeuren en privacy
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-sage-600">E-mail notificaties</p>
-              <p className="text-sm text-sage-500">Ontvang updates over nieuwe producten</p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" className="sr-only peer" defaultChecked />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-sage-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sage-400"></div>
-            </label>
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-sage-600">Tweestapsverificatie</p>
-              <p className="text-sm text-sage-500">Extra beveiliging voor je account</p>
-            </div>
-            <Button variant="outline" size="sm">
-              Instellen
-            </Button>
-          </div>
+          <p className="text-sage-500 mb-4">
+            Het verwijderen van je account is permanent en kan niet ongedaan worden gemaakt.
+            Alle gegevens worden verwijderd.
+          </p>
+          <Button variant="secondary" disabled>
+            Account verwijderen (binnenkort beschikbaar)
+          </Button>
         </CardContent>
       </Card>
     </div>

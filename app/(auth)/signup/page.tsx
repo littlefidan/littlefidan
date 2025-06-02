@@ -43,10 +43,11 @@ export default function SignupPage() {
       if (error) {
         setError(error.message)
       } else if (data.user) {
+        // Profile is automatically created by the database trigger
         // Success! Redirect to login or show success message
         router.push('/login?message=Check je email om je account te bevestigen')
       }
-    } catch (err) {
+    } catch {
       setError('Er is iets misgegaan. Probeer het opnieuw.')
     } finally {
       setLoading(false)

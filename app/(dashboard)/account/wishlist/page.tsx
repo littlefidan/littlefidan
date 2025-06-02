@@ -48,12 +48,10 @@ export default function WishlistPage() {
   const handleAddToCart = (item: any) => {
     addToCart({
       id: item.id,
-      title: item.title,
+      name: item.name || item.name,
       price: item.price,
       slug: item.slug,
       image: item.image,
-      botanicalTheme: item.botanicalTheme,
-      ageRange: item.ageRange,
     })
   }
 
@@ -95,8 +93,8 @@ export default function WishlistPage() {
                 <Link href={`/products/${item.slug}`}>
                   <div className="relative aspect-[4/5] overflow-hidden bg-sage-50">
                     <Image
-                      src={item.image || `https://placehold.co/400x500/9CAA8B/FFFFFF?text=${encodeURIComponent(item.title)}`}
-                      alt={item.title}
+                      src={item.image || `https://placehold.co/400x500/9CAA8B/FFFFFF?text=${encodeURIComponent(item.name)}`}
+                      alt={item.name}
                       fill
                       className="object-cover transition-transform duration-700 group-hover:scale-105"
                     />
@@ -111,7 +109,7 @@ export default function WishlistPage() {
                 <div className="p-4">
                   <Link href={`/products/${item.slug}`}>
                     <h3 className="font-serif text-lg font-semibold text-sage-600 mb-2 group-hover:text-sage-500 transition-colors">
-                      {item.title}
+                      {item.name}
                     </h3>
                   </Link>
                   
