@@ -82,3 +82,5 @@ The platform uses a botanical-inspired design system with:
 ## License
 
 Private - All rights reserved
+
+![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/littlefidan/littlefidan?utm_source=oss&utm_medium=github&utm_campaign=littlefidan%2Flittlefidan&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)

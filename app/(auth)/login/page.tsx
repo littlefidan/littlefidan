@@ -155,7 +155,7 @@ export default function LoginPage() {
 
             <div className="mt-6 text-center space-y-2">
               <Link 
-                href="/forgot-password" 
+                href="/reset-password" 
                 className="text-sm text-taupe-600 hover:text-olive transition-colors"
               >
                 Wachtwoord vergeten?

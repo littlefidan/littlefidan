@@ -1,81 +1,138 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Download, Clock, Search, Filter, FileText, AlertCircle } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { formatDate } from '@/lib/utils'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { useRouter } from 'next/navigation'
+import DownloadButton from '@/components/download-button'
 
-// Mock data - replace with Supabase query
-const downloads = [
-  {
-    id: '1',
-    title: 'Seizoenskaarten - Winter',
-    category: 'Seizoensgebonden',
-    downloadDate: '2024-12-15',
-    expiresAt: '2025-01-15',
-    downloadsUsed: 2,
-    maxDownloads: 5,
-    fileSize: '4.2 MB',
-    productId: 'winter-cards',
-  },
-  {
-    id: '2',
-    title: 'Mindful Kleuren - Botanisch',
-    category: 'Mindfulness',
-    downloadDate: '2024-12-10',
-    expiresAt: '2025-01-10',
-    downloadsUsed: 1,
-    maxDownloads: 5,
-    fileSize: '8.7 MB',
-    productId: 'mindful-coloring',
-  },
-  {
-    id: '3',
-    title: 'Culturele Feesten - Nederland',
-    category: 'Cultureel',
-    downloadDate: '2024-12-08',
-    expiresAt: '2025-01-08',
-    downloadsUsed: 3,
-    maxDownloads: 5,
-    fileSize: '6.1 MB',
-    productId: 'cultural-celebrations',
-  },
-  {
-    id: '4',
-    title: 'Natuurlijke Telkaarten',
-    category: 'Educatief',
-    downloadDate: '2024-12-05',
-    expiresAt: '2025-01-05',
-    downloadsUsed: 1,
-    maxDownloads: 5,
-    fileSize: '3.8 MB',
-    productId: 'counting-cards',
-  },
-]
+interface ProductFile {
+  id: string
+  file_name: string
+  file_size: number
+  file_type: string
+}
+
+interface Product {
+  id: string
+  name: string
+  category: string
+  product_files: ProductFile[]
+}
+
+interface OrderItem {
+  id: string
+  created_at: string
+  product: Product
+}
+
+interface Order {
+  id: string
+  order_number: string
+  created_at: string
+  payment_status: string
+  order_items: OrderItem[]
+}
 
 export default function DownloadsPage() {
+  const [orders, setOrders] = useState<Order[]>([])
+  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
+  const supabase = createClientComponentClient()
+  const router = useRouter()
 
-  const filteredDownloads = downloads.filter((download) => {
-    const matchesSearch = download.title.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesCategory = selectedCategory === 'all' || download.category === selectedCategory
+  useEffect(() => {
+    fetchDownloads()
+  }, [])
+
+  const fetchDownloads = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) {
+        router.push('/login')
+        return
+      }
+
+      // Fetch user's paid orders with products and files
+      const { data: ordersData, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items(
+            *,
+            product:products(
+              *,
+              product_files(*)
+            )
+          )
+        `)
+        .eq('user_id', user.id)
+        .eq('payment_status', 'paid')
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+
+      // Also fetch free products (if user has accessed them)
+      const { data: freeProducts } = await supabase
+        .from('products')
+        .select(`
+          *,
+          product_files(*)
+        `)
+        .eq('access_type', 'free')
+        .eq('status', 'active')
+
+      // Combine paid and free products
+      setOrders(ordersData || [])
+    } catch (error) {
+      console.error('Error fetching downloads:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Extract all downloadable items
+  const downloadableItems = orders.flatMap(order => 
+    order.order_items.map(item => ({
+      orderId: order.id,
+      orderNumber: order.order_number,
+      orderDate: order.created_at,
+      product: item.product,
+      files: item.product.product_files || []
+    }))
+  )
+
+  // Get unique categories
+  const categories = [...new Set(downloadableItems.map(item => item.product.category))]
+
+  // Filter items
+  const filteredItems = downloadableItems.filter((item) => {
+    const matchesSearch = item.product.name.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesCategory = selectedCategory === 'all' || item.product.category === selectedCategory
     return matchesSearch && matchesCategory
   })
 
-  const handleDownload = (downloadId: string) => {
-    // TODO: Implement download with Supabase
-    console.log('Downloading:', downloadId)
-  }
-
-  const getDaysRemaining = (expiryDate: string) => {
+  const getDaysRemaining = (orderDate: string) => {
+    const order = new Date(orderDate)
+    const expiry = new Date(order.getTime() + 30 * 24 * 60 * 60 * 1000) // 30 days
     const today = new Date()
-    const expiry = new Date(expiryDate)
     const diffTime = expiry.getTime() - today.getTime()
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    return diffDays
+    return { days: diffDays, expiryDate: expiry }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sage-500"></div>
+      </div>
+    )
   }
 
   return (
@@ -85,7 +142,7 @@ export default function DownloadsPage() {
           Mijn Downloads
         </h1>
         <p className="text-sage-500">
-          Download je gekochte producten. Let op de vervaldatum!
+          Download je gekochte producten. Downloads zijn 30 dagen geldig na aankoop.
         </p>
       </div>
 
@@ -107,15 +164,10 @@ export default function DownloadsPage() {
             onChange={(e) => setSelectedCategory(e.target.value)}
           >
             <option value="all">Alle categorieën</option>
-            <option value="Seizoensgebonden">Seizoensgebonden</option>
-            <option value="Mindfulness">Mindfulness</option>
-            <option value="Cultureel">Cultureel</option>
-            <option value="Educatief">Educatief</option>
+            {categories.map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
           </select>
-          <Button variant="outline">
-            <Filter className="h-4 w-4 mr-2" />
-            Filter
-          </Button>
         </div>
       </div>
 
@@ -127,7 +179,7 @@ export default function DownloadsPage() {
             <div className="text-sm text-sage-600">
               <p className="font-medium mb-1">Download Informatie</p>
               <p>
-                Je kunt elk product maximaal 5 keer downloaden binnen 30 dagen na aankoop. 
+                Je kunt producten onbeperkt downloaden binnen 30 dagen na aankoop. 
                 Downloads verlopen automatisch na deze periode.
               </p>
             </div>
@@ -137,39 +189,26 @@ export default function DownloadsPage() {
 
       {/* Downloads Grid */}
       <div className="grid md:grid-cols-2 gap-6">
-        {filteredDownloads.map((download) => {
-          const daysRemaining = getDaysRemaining(download.expiresAt)
-          const isExpiringSoon = daysRemaining <= 7
+        {filteredItems.map((item, index) => {
+          const { days: daysRemaining, expiryDate } = getDaysRemaining(item.orderDate)
+          const isExpiringSoon = daysRemaining <= 7 && daysRemaining > 0
           const isExpired = daysRemaining <= 0
           
           return (
-            <Card key={download.id} className={isExpired ? 'opacity-60' : ''}>
+            <Card key={`${item.orderId}-${item.product.id}-${index}`} className={isExpired ? 'opacity-60' : ''}>
               <CardContent className="p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-start gap-3">
                     <div className="bg-sage-50 rounded-xl p-3">
                       <FileText className="h-6 w-6 text-sage-500" />
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-sage-600">{download.title}</h3>
-                      <p className="text-sm text-sage-500">{download.category}</p>
-                      <p className="text-xs text-sage-400 mt-1">{download.fileSize}</p>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-sage-600">{item.product.name}</h3>
+                      <p className="text-sm text-sage-500">{item.product.category}</p>
+                      <p className="text-xs text-sage-400 mt-1">
+                        Bestelling: {item.orderNumber}
+                      </p>
                     </div>
-                  </div>
-                </div>
-
-                <div className="space-y-3 mb-4">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-sage-500">Downloads gebruikt</span>
-                    <span className="font-medium text-sage-600">
-                      {download.downloadsUsed} van {download.maxDownloads}
-                    </span>
-                  </div>
-                  <div className="w-full bg-sage-100 rounded-full h-2">
-                    <div
-                      className="bg-sage-400 h-2 rounded-full transition-all"
-                      style={{ width: `${(download.downloadsUsed / download.maxDownloads) * 100}%` }}
-                    />
                   </div>
                 </div>
 
@@ -181,28 +220,39 @@ export default function DownloadsPage() {
                         ? 'Verlopen' 
                         : isExpiringSoon 
                           ? `Nog ${daysRemaining} dagen` 
-                          : `Geldig tot ${formatDate(download.expiresAt, 'nl-NL')}`
+                          : `Geldig tot ${formatDate(expiryDate.toISOString(), 'nl-NL')}`
                       }
                     </span>
                   </div>
+                  <span className="text-sm text-sage-500">
+                    {item.files.length} {item.files.length === 1 ? 'bestand' : 'bestanden'}
+                  </span>
                 </div>
 
-                <Button 
-                  className="w-full" 
-                  disabled={isExpired || download.downloadsUsed >= download.maxDownloads}
-                  onClick={() => handleDownload(download.id)}
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  {isExpired 
-                    ? 'Verlopen' 
-                    : download.downloadsUsed >= download.maxDownloads 
-                      ? 'Limiet bereikt' 
-                      : 'Download'
-                  }
-                </Button>
+                {/* File list */}
+                <div className="space-y-2">
+                  {item.files.map((file) => (
+                    <div key={file.id} className="flex items-center justify-between p-3 bg-sage-50 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-sage-500" />
+                        <span className="text-sm text-sage-600">{file.file_name}</span>
+                        <span className="text-xs text-sage-400">
+                          ({(file.file_size / 1024 / 1024).toFixed(1)} MB)
+                        </span>
+                      </div>
+                      <DownloadButton
+                        fileId={file.id}
+                        fileName={file.file_name}
+                        productName={item.product.name}
+                        size="sm"
+                        className={isExpired ? 'opacity-50 cursor-not-allowed' : ''}
+                      />
+                    </div>
+                  ))}
+                </div>
 
                 {isExpired && (
-                  <p className="text-xs text-center text-sage-500 mt-2">
+                  <p className="text-xs text-center text-sage-500 mt-4">
                     Contact support voor toegang
                   </p>
                 )}
@@ -213,7 +263,7 @@ export default function DownloadsPage() {
       </div>
 
       {/* Empty State */}
-      {filteredDownloads.length === 0 && (
+      {filteredItems.length === 0 && (
         <Card>
           <CardContent className="p-12 text-center">
             <div className="mx-auto w-16 h-16 bg-sage-50 rounded-full flex items-center justify-center mb-4">
