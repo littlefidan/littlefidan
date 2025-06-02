@@ -1,0 +1,165 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: #FAFAFA;
+    --foreground: #4A4A4A;
+    --primary: #FFB5C5;
+    --primary-foreground: #FFFFFF;
+    --secondary: #B8E4D0;
+    --secondary-foreground: #4A4A4A;
+    --muted: #FFF4E8;
+    --muted-foreground: #6B6B6B;
+    --accent: #B8E0FF;
+    --accent-foreground: #4A4A4A;
+    --border: #FFE1E8;
+    --input: #FFE1E8;
+    --radius: 1.5rem;
+  }
+
+  * {
+    @apply border-primary-100;
+  }
+
+  body {
+    @apply bg-neutral-light text-neutral-dark;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    background-image: 
+      radial-gradient(at 20% 80%, rgb(255, 181, 197, 0.15) 0px, transparent 50%),
+      radial-gradient(at 80% 20%, rgb(184, 228, 208, 0.15) 0px, transparent 50%),
+      radial-gradient(at 40% 40%, rgb(184, 224, 255, 0.1) 0px, transparent 50%);
+  }
+}
+
+@layer components {
+  /* Artistieke Blob Shapes */
+  .blob {
+    border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+    filter: blur(40px);
+    opacity: 0.7;
+    position: absolute;
+    z-index: -1;
+  }
+
+  /* Instagram-style gradient borders */
+  .instagram-border {
+    background: linear-gradient(45deg, #FFB5C5, #B8E4D0, #B8E0FF, #E0C5FF);
+    padding: 3px;
+    border-radius: 1.5rem;
+  }
+
+  /* Glassmorphism effecten */
+  .glass {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+
+  /* Speelse hovers */
+  .hover-lift {
+    transition: all 0.3s ease;
+  }
+  .hover-lift:hover {
+    transform: translateY(-5px) scale(1.02);
+    box-shadow: 0 20px 40px -15px rgba(255, 181, 197, 0.3);
+  }
+
+  /* Organische vormen */
+  .organic-shape {
+    border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    background: linear-gradient(135deg, #FFB5C5, #B8E4D0, #B8E0FF);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Sparkle effect */
+  .sparkle {
+    position: relative;
+  }
+  .sparkle::before {
+    content: '✨';
+    position: absolute;
+    animation: sparkle 2s ease-in-out infinite;
+  }
+
+  /* Instagram grid hover */
+  .instagram-card {
+    @apply relative overflow-hidden rounded-3xl transition-all duration-300;
+  }
+  .instagram-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, transparent 0%, rgba(255, 181, 197, 0.3) 100%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .instagram-card:hover::after {
+    opacity: 1;
+  }
+
+  /* Wavy decorations */
+  .wavy {
+    position: relative;
+  }
+  .wavy::after {
+    content: '~';
+    position: absolute;
+    font-size: 2rem;
+    color: #FFB5C5;
+    opacity: 0.3;
+    animation: float 3s ease-in-out infinite;
+  }
+}
+
+@layer utilities {
+  .masonry-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-auto-rows: 10px;
+    gap: 2rem;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Custom shadows */
+  .shadow-pastel {
+    box-shadow: 
+      0 4px 6px -1px rgba(255, 181, 197, 0.1),
+      0 2px 4px -1px rgba(184, 228, 208, 0.1);
+  }
+
+  .shadow-dreamy {
+    box-shadow: 
+      0 20px 40px -15px rgba(255, 181, 197, 0.2),
+      0 10px 20px -10px rgba(184, 224, 255, 0.2);
+  }
+
+  /* Gradient backgrounds */
+  .bg-gradient-pastel {
+    background: linear-gradient(135deg, #FFF0F3 0%, #F0FBF6 50%, #F0F9FF 100%);
+  }
+
+  .bg-gradient-candy {
+    background: linear-gradient(135deg, #FFB5C5 0%, #B8E4D0 50%, #B8E0FF 100%);
+  }
+
+  /* Artistic borders */
+  .border-wavy {
+    border-radius: 40% 60% 60% 40% / 40% 40% 60% 60%;
+  }
+
+  .border-blob {
+    border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+  }
+}
