@@ -14,7 +14,8 @@ import {
   XMarkIcon,
   ArrowLeftOnRectangleIcon,
   TagIcon,
-  EnvelopeIcon
+  EnvelopeIcon,
+  SparklesIcon
 } from '@heroicons/react/24/outline'
 import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
@@ -23,6 +24,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 const menuItems = [
   { name: 'Dashboard', href: '/admin', icon: HomeIcon },
   { name: 'Producten', href: '/admin/products', icon: ShoppingBagIcon },
+  { name: 'AI Generator', href: '/admin/ai-generator', icon: SparklesIcon },
   { name: 'Categorieën', href: '/admin/categories', icon: TagIcon },
   { name: 'Bestellingen', href: '/admin/orders', icon: ClipboardDocumentListIcon },
   { name: 'Nieuwsbrief', href: '/admin/subscribers', icon: EnvelopeIcon },
