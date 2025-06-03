@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
     // Create order items
     const orderItems = orderData.items.map((item: CheckoutItem) => ({
       order_id: order.id,
-      product_id: item.product_id,
+      product_id: item.id,
       product_name: item.name,
       product_price: item.price,
       quantity: item.quantity,
