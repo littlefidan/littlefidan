@@ -2,7 +2,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Instagram, Heart, MessageCircle, ShoppingBag, ExternalLink, Download, Sparkles, Grid3X3 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import InstagramFeed from '@/components/instagram-feed'
 import InstagramHero from '@/components/instagram-hero'
@@ -126,7 +126,23 @@ const instagramStats = {
 }
 
 export default async function InstagramPage() {
-  const supabase = createServerComponentClient({ cookies })
+  const cookieStore = await cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          },
+        },
+      }
+    )
   
   // Get actual products to link with Instagram posts
   const { data: products } = await supabase

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@supabase/ssr'
 import { XMarkIcon, CloudArrowUpIcon, DocumentIcon, TrashIcon, EyeIcon } from '@heroicons/react/24/outline'
 import { useDropzone } from 'react-dropzone'
 import BundleSelector from '@/components/admin/bundle-selector'
@@ -69,7 +69,10 @@ export default function ProductModal({ product, onClose, onSave }: ProductModalP
   const [fileAccessTypes, setFileAccessTypes] = useState<Record<string, string>>({})
   const [categories, setCategories] = useState<Array<{id: string, name: string, slug: string}>>([])
   
-  const supabase = createClientComponentClient()
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
   useEffect(() => {
     // Fetch categories
