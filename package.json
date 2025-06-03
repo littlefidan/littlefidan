@@ -35,6 +35,7 @@
     "react-dropzone": "^14.3.8",
     "sonner": "^2.0.5",
     "tailwind-merge": "^2.6.0",
+    "zod": "^3.25.49",
     "zustand": "^5.0.5"
   },
   "devDependencies": {

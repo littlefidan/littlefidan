@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
+import { CheckoutItem } from '@/types/checkout'
+import { paginationSchema, safeValidate } from '@/lib/validation'
 
 export async function GET(request: NextRequest) {
   try {
@@ -28,8 +30,21 @@ export async function GET(request: NextRequest) {
     // Get query parameters
     const status = searchParams.get('status')
     const search = searchParams.get('search')
-    const limit = parseInt(searchParams.get('limit') || '20')
-    const offset = parseInt(searchParams.get('offset') || '0')
+    
+    // Validate pagination parameters
+    const paginationValidation = safeValidate(paginationSchema, {
+      limit: searchParams.get('limit') || '20',
+      offset: searchParams.get('offset') || '0'
+    })
+    
+    if (!paginationValidation.success) {
+      return NextResponse.json(
+        { error: 'Invalid pagination parameters' },
+        { status: 400 }
+      )
+    }
+    
+    const { limit, offset } = paginationValidation.data
 
     // Build query
     let query = supabase
@@ -74,9 +89,9 @@ export async function GET(request: NextRequest) {
       limit,
       offset
     })
-  } catch (error: any) {
+  } catch (error) {
     return NextResponse.json(
-      { error: error.message || 'Er is een fout opgetreden' },
+      { error: error instanceof Error ? error.message : 'Er is een fout opgetreden' },
       { status: 500 }
     )
   }
@@ -96,7 +111,7 @@ export async function POST(request: NextRequest) {
     const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
 
     // Calculate totals
-    const subtotal = orderData.items.reduce((sum: number, item: any) => 
+    const subtotal = orderData.items.reduce((sum: number, item: CheckoutItem) => 
       sum + (item.price * item.quantity), 0
     )
     const tax = subtotal * 0.21 // 21% BTW
@@ -126,7 +141,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create order items
-    const orderItems = orderData.items.map((item: any) => ({
+    const orderItems = orderData.items.map((item: CheckoutItem) => ({
       order_id: order.id,
       product_id: item.product_id,
       product_name: item.name,
@@ -144,9 +159,9 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ order })
-  } catch (error: any) {
+  } catch (error) {
     return NextResponse.json(
-      { error: error.message || 'Er is een fout opgetreden' },
+      { error: error instanceof Error ? error.message : 'Er is een fout opgetreden' },
       { status: 500 }
     )
   }

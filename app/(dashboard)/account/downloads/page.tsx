@@ -10,6 +10,7 @@ import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 import DownloadButton from '@/components/download-button'
 import { toast } from 'sonner'
+import { CardSkeleton } from '@/components/ui/skeleton'
 
 interface ProductFile {
   id: string
@@ -159,8 +160,20 @@ export default function DownloadsPage() {
 
   if (loading) {
     return (
-      <div className="flex justify-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sage-500"></div>
+      <div className="space-y-8">
+        <div>
+          <h1 className="font-serif text-2xl md:text-3xl font-bold text-sage-600 mb-2">
+            Mijn Downloads
+          </h1>
+          <p className="text-sage-500 text-sm md:text-base">
+            Download je gekochte producten. Downloads zijn 30 dagen geldig na aankoop.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <CardSkeleton key={i} />
+          ))}
+        </div>
       </div>
     )
   }

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter, Crimson_Pro, Sacramento } from 'next/font/google'
 import { Toaster } from 'sonner'
+import { ErrorBoundary } from '@/components/error-boundary'
 import './globals.css'
 
 const inter = Inter({ 
@@ -48,7 +49,9 @@ export default function RootLayout({
   return (
     <html lang="nl" className={`${inter.variable} ${crimsonPro.variable} ${sacramento.variable}`}>
       <body className="font-sans antialiased">
-        {children}
+        <ErrorBoundary>
+          {children}
+        </ErrorBoundary>
         <Toaster 
           position="top-right"
           toastOptions={{
