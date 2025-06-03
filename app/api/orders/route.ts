@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { CheckoutItem } from '@/types/checkout'
-import { paginationSchema, safeValidate } from '@/lib/validation'
+import { safeValidate } from '@/lib/validation'
 
 export async function GET(request: NextRequest) {
   try {
@@ -51,20 +51,13 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status')
     const search = searchParams.get('search')
     
-    // Validate pagination parameters
-    const paginationValidation = safeValidate(paginationSchema, {
-      limit: searchParams.get('limit') || '20',
-      offset: searchParams.get('offset') || '0'
-    })
+    // Parse pagination parameters
+    const limitParam = searchParams.get('limit') || '20'
+    const offsetParam = searchParams.get('offset') || '0'
     
-    if (!paginationValidation.success) {
-      return NextResponse.json(
-        { error: 'Invalid pagination parameters' },
-        { status: 400 }
-      )
-    }
-    
-    const { limit, offset } = paginationValidation.data
+    // Convert to numbers with validation
+    const limit = Math.min(Math.max(parseInt(limitParam) || 20, 1), 100)
+    const offset = Math.max(parseInt(offsetParam) || 0, 0)
 
     // Build query
     let query = supabase
