@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     // If payment is successful, send confirmation email (when email service is ready)
     if (payment.status === 'paid') {
       // TODO: Send order confirmation email
-      console.log('Payment successful for order:', orderId)
+      // Payment successful for order: orderId
     }
 
     return NextResponse.json({ success: true })

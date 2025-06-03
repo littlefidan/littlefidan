@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
 // Simple in-memory rate limiting (replace with Redis in production)
@@ -9,8 +9,26 @@ const RATE_WINDOW = 60 * 60 * 1000 // per hour
 
 export async function POST(request: NextRequest) {
   try {
-    // Check auth
-    const supabase = createRouteHandlerClient({ cookies })
+    // Check auth with async cookie handling
+    const cookieStore = await cookies()
+    
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          },
+        },
+      }
+    )
+    
     const { data: { user } } = await supabase.auth.getUser()
     
     if (!user) {
@@ -48,7 +66,7 @@ export async function POST(request: NextRequest) {
     requestCounts.set(user.id, userRateData)
 
     // Get request data
-    const { prompt, size = '1792x1024', quality = 'hd', n = 1 } = await request.json()
+    const { prompt, size = '1792x1024', quality = 'standard', style = 'natural', n = 1 } = await request.json()
 
     if (!prompt) {
       return NextResponse.json({ error: 'Prompt is verplicht' }, { status: 400 })
@@ -78,6 +96,7 @@ export async function POST(request: NextRequest) {
         prompt,
         size,
         quality,
+        style,
         n,
         response_format: 'url'
       })

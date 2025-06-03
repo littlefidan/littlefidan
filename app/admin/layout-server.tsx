@@ -6,7 +6,7 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode
 }) {
-  // Server-side admin check - dit blokkeert toegang als niet admin
+  // Server-side admin check
   await checkAdminAuth()
   
   return <AdminLayoutClient>{children}</AdminLayoutClient>
