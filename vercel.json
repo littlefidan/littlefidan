@@ -1,15 +1,15 @@
 {
   "redirects": [
     {
-      "source": "/(.*)",
+      "source": "/:path*",
       "has": [
         {
           "type": "host",
           "value": "www.littlefidan.com"
         }
       ],
-      "destination": "https://littlefidan.com/$1",
-      "permanent": true
+      "destination": "https://littlefidan.com/:path*",
+      "permanent": false
     }
   ]
 }
