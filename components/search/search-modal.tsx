@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { Search, X, ArrowRight, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -29,7 +29,9 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
   const [results, setResults] = useState<Product[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [selectedIndex, setSelectedIndex] = useState(-1)
   const inputRef = useRef<HTMLInputElement>(null)
+  const resultsRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (isOpen) {
@@ -83,16 +85,16 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
     return () => clearTimeout(delayDebounce)
   }, [query, selectedCategory])
 
-  if (!isOpen) return null
-
   const filteredResults = selectedCategory
     ? results.filter(r => r.category === selectedCategory)
     : results
 
   const categories = [...new Set(results.map(r => r.category))]
 
+  if (!isOpen) return null
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Zoeken">
       <div className="fixed inset-x-0 top-0 bg-white shadow-2xl max-h-[80vh] overflow-hidden">
         <div className="container mx-auto px-4">
           {/* Search Header */}
@@ -103,14 +105,38 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
               type="text"
               placeholder="Zoek producten, categorieën..."
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                setQuery(e.target.value)
+                setSelectedIndex(-1)
+              }}
+              onKeyDown={(e: ReactKeyboardEvent<HTMLInputElement>) => {
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault()
+                  setSelectedIndex(prev => Math.min(prev + 1, filteredResults.length - 1))
+                } else if (e.key === 'ArrowUp') {
+                  e.preventDefault()
+                  setSelectedIndex(prev => Math.max(prev - 1, -1))
+                } else if (e.key === 'Enter' && selectedIndex >= 0) {
+                  e.preventDefault()
+                  const selectedProduct = filteredResults[selectedIndex]
+                  if (selectedProduct) {
+                    window.location.href = `/products/${selectedProduct.slug}`
+                    onClose()
+                  }
+                }
+              }}
               className="flex-1 border-0 focus-visible:ring-0 text-lg"
+              aria-label="Zoek producten"
+              aria-autocomplete="list"
+              aria-controls="search-results"
+              aria-expanded={results.length > 0}
             />
             <Button
               variant="ghost"
               size="icon"
               onClick={onClose}
               className="hover:bg-sage-50"
+              aria-label="Sluit zoeken"
             >
               <X className="h-5 w-5" />
             </Button>
@@ -151,7 +177,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
         </div>
 
         {/* Search Results */}
-        <div className="container mx-auto px-4 pb-6 max-h-[60vh] overflow-y-auto">
+        <div ref={resultsRef} id="search-results" className="container mx-auto px-4 pb-6 max-h-[60vh] overflow-y-auto" role="listbox">
           {isSearching ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 text-sage-400 animate-spin" />
@@ -163,14 +189,14 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
             </div>
           ) : filteredResults.length > 0 ? (
             <div className="grid gap-4 py-4">
-              {filteredResults.map((product) => (
+              {filteredResults.map((product, index) => (
                 <Link
                   key={product.id}
                   href={`/products/${product.slug}`}
                   onClick={onClose}
                   className="group"
                 >
-                  <Card className="hover:shadow-md transition-shadow">
+                  <Card className={`hover:shadow-md transition-shadow ${selectedIndex === index ? 'ring-2 ring-sage-400' : ''}`} role="option" aria-selected={selectedIndex === index}>
                     <div className="flex items-center gap-4 p-4">
                       <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-sage-50 flex-shrink-0">
                         {product.image ? (

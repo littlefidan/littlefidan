@@ -8,6 +8,7 @@ import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NewsletterForm } from '@/components/newsletter-form'
+import { ProductSkeleton } from '@/components/ui/skeleton'
 
 interface Category {
   id: string
@@ -272,8 +273,10 @@ export default function ProductsClient({ initialData }: { initialData: InitialDa
 
           {/* Products */}
           {loading && products.length === 0 ? (
-            <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <ProductSkeleton key={i} />
+              ))}
             </div>
           ) : (
             <>

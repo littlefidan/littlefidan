@@ -62,7 +62,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   }
 
   return (
-    <Card className="group overflow-hidden hover:shadow-botanical transition-all duration-300">
+    <Card className="group overflow-hidden hover:shadow-botanical transition-all duration-300" role="article" aria-label={`Product: ${product.name}`}>
       <Link href={`/products/${product.slug}`}>
         <div className="aspect-square relative overflow-hidden">
           <Image
@@ -118,6 +118,8 @@ export default function ProductCard({ product }: ProductCardProps) {
             size="sm"
             onClick={handleAddToWishlist}
             className={`${isInWishlist ? 'text-red-500' : 'text-sage-400'} hover:text-red-500`}
+            aria-label={isInWishlist ? `${product.name} verwijderen uit favorieten` : `${product.name} toevoegen aan favorieten`}
+            aria-pressed={isInWishlist}
           >
             <Heart className={`h-4 w-4 ${isInWishlist ? 'fill-current' : ''}`} />
           </Button>
@@ -128,6 +130,7 @@ export default function ProductCard({ product }: ProductCardProps) {
             onClick={handleAddToCart}
             className="flex-1"
             size="sm"
+            aria-label={`${product.name} ${product.access_type === 'free' ? 'downloaden' : 'toevoegen aan winkelwagen'}`}
           >
             <ShoppingBag className="mr-2 h-4 w-4" />
             {product.access_type === 'free' ? 'Download' : 'Toevoegen'}

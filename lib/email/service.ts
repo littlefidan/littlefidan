@@ -47,7 +47,7 @@ export class EmailService {
   async send(options: EmailOptions): Promise<boolean> {
     if (!this.apiKey) {
       console.warn('Email service not configured. Email would have been sent to:', options.to)
-      console.log('Subject:', options.subject)
+      // Subject: options.subject
       return true // Return true in development
     }
 
@@ -63,7 +63,7 @@ export class EmailService {
       //   reply_to: options.replyTo
       // })
 
-      console.log('Email sent successfully to:', options.to)
+      // Email sent successfully to: options.to
       return true
     } catch (error) {
       console.error('Failed to send email:', error)

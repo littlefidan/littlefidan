@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -10,88 +10,133 @@ import {
   Wand2, 
   Download, 
   Sparkles, 
-  Leaf, 
-  Palette, 
-  BookOpen,
+  Heart,
+  Book,
+  Moon,
+  Star,
+  Flower2,
   Baby,
-  GraduationCap,
-  Flower,
-  TreePine,
-  Bug,
+  Calendar,
   Sun,
   Cloud,
   Loader2,
   Save,
   Image as ImageIcon,
   Copy,
-  Check
+  Check,
+  Palette,
+  Layers,
+  BookOpen,
+  Users,
+  Home
 } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
-// Prompt templates voor verschillende categorieën
-const promptTemplates = {
+// Islamitische prompt templates - Geoptimaliseerd tegen tekst problemen
+const islamicTemplates = {
   coloring: {
-    basic: "Simple coloring page for kids featuring {subject}, drawn in solid black lines with clear bold outlines, no shading or colors, white background, suitable for children ages {age}",
-    botanical: "Educational botanical coloring page showing {plant} with labeled parts, clear black outlines, no shading, white background, designed for {age} year old children to learn about plants",
-    mandala: "Simple mandala-style coloring page with {theme} elements, symmetrical design, bold black lines, no shading, white background, appropriate for {age} year olds"
+    basic: "Simple black outline drawing of {subject} with Islamic geometric patterns, children's coloring book page, clean thick lines only, pure white background, clear shapes for {age} year olds, respectful cultural design, mathematical symmetry in border decoration",
+    arabic: "Clean outline illustration showing Arabic letter shape {letter} formed by {subject} elements, simple coloring page design, thick black line art on white background, geometric patterns, suitable for {age} year old children",
+    dua: "Simple line drawing of {prayer} theme using symbolic Islamic elements only, children's coloring book illustration, decorative geometric border, thick black outlines, white background, clear shapes for {age} year olds",
+    nature: "Black outline drawing of {subject} surrounded by 8-point Islamic star pattern, nature coloring page, clean geometric design, thick lines on white background, mathematical pattern borders, suitable complexity for {age} year olds"
   },
   worksheet: {
-    tracing: "Educational tracing worksheet for {age} year olds featuring {subject}, with dotted lines to trace, clear instructions in Dutch, practice spaces, white background",
-    counting: "Math counting worksheet with {theme} objects (1-{max}), clear illustrations, spaces for writing numbers, Dutch instructions, suitable for {age} year olds",
-    matching: "Matching activity worksheet connecting {subject1} to {subject2}, clear line art style, Dutch labels, designed for {age} year old children"
+    tracing: "Dotted line tracing pattern worksheet featuring {subject} shapes, educational activity page, clear practice lines with directional arrows, white background, suitable for {age} year old children",
+    counting: "Math counting practice sheet showing 1 to {max} using {theme} objects, educational worksheet design, thick black outlines, numbered boxes for practice, white background, {age} year old level",
+    emotions: "Emotion recognition activity sheet showing {emotion} expressions, educational worksheet with circle faces, thick line drawings, practice areas, white background for {age} year olds",
+    routine: "Daily schedule activity sheet with {routine} illustrations, educational time learning worksheet, clock drawings, sequence boxes, thick outlines on white, {age} year old appropriate"
   },
   educational: {
-    poster: "Educational poster about {topic} for {age} year olds, colorful illustration with Dutch labels, key facts highlighted, child-friendly design, botanical theme",
-    flashcard: "Flashcard illustration of {subject}, simple and clear design, Dutch name prominently displayed, suitable for {age} year old vocabulary learning",
-    infographic: "Kid-friendly infographic about {topic}, using {theme} illustrations, simple Dutch text, bright colors, designed for {age} year olds"
+    poster: "Colorful educational poster illustration about {topic}, visual learning design with icons and pictures only, bright child-friendly graphics, suitable for {age} year olds, clean layout",
+    flashcard: "Simple flashcard illustration showing {subject}, bold colorful picture design, white background with colored border, visual learning card for {age} year olds",
+    infographic: "Visual infographic design about {topic} using pictures and icons only, colorful educational chart, simple graphics suitable for {age} year old children"
+  }
+}
+
+// Universele templates - Focus op positieve beschrijvingen zonder tekst
+const universalTemplates = {
+  coloring: {
+    animals: "Simple black outline drawing of cute {animal}, children's coloring book page design, thick clean lines only, pure white background, single main subject, clear shapes suitable for {age} year olds",
+    vehicles: "Black line drawing of {vehicle} in action scene, coloring book illustration, thick outlines only, white background, simple mechanical details, appropriate complexity for {age} year old children",
+    alphabet: "Decorative letter {letter} shape formed by {object} elements, outline coloring page design, thick black lines on white background, creative letter visualization for {age} year olds",
+    emotions: "Simple face drawings showing {emotion} expressions, coloring page with circle faces, thick black outlines only, white background, clear emotional features for {age} year old children",
+    seasons: "Line drawing of {season} nature scene, coloring book page with seasonal elements, thick black outlines, white background, appropriate detail level for {age} year olds"
   },
-  storybook: {
-    scene: "Children's storybook illustration showing {scene}, {style} art style, {mood} atmosphere, botanical elements, suitable for {age} year olds",
-    character: "Cute {character} character for children's book, {style} illustration style, friendly expression, botanical theme accessories, appealing to {age} year olds",
-    cover: "Children's book cover featuring {title}, {style} illustration, botanical border design, Dutch title text, appealing to {age} year old readers"
+  worksheet: {
+    counting: "Mathematics practice sheet with {theme} objects from 1 to {max}, educational worksheet design, thick black counting boxes, white background, suitable for {age} year olds",
+    shapes: "Shape recognition practice sheet featuring {shapes}, educational worksheet with tracing areas, thick outline drawings, white background for {age} year old children",
+    differences: "Spot the difference puzzle with {theme} scene showing {count} variations, activity worksheet design, two similar drawings side by side, thick outlines for {age} year olds",
+    patterns: "Pattern completion worksheet using {theme} objects, sequence activity sheet, thick outline drawings in rows, white background, {age} year old difficulty"
+  },
+  educational: {
+    poster: "Bright colorful educational poster about {topic}, visual infographic design using only pictures and symbols, child-friendly illustrations, suitable for {age} year olds",
+    flashcard: "Picture flashcard showing {subject}, bold colorful illustration on white card design, simple visual learning tool for {age} year old children",
+    routine: "Visual daily schedule showing {routine} activities, picture chart with clock illustrations only, colorful activity icons, designed for {age} year olds"
   }
 }
 
 // Leeftijdsgroepen
 const ageGroups = [
-  { value: '2-4', label: 'Peuters (2-4 jaar)' },
-  { value: '4-6', label: 'Kleuters (4-6 jaar)' },
-  { value: '6-8', label: 'Onderbouw (6-8 jaar)' },
-  { value: '8-10', label: 'Middenbouw (8-10 jaar)' },
-  { value: '10-12', label: 'Bovenbouw (10-12 jaar)' }
+  { value: '2-3', label: 'Peuters (2-3 jaar)' },
+  { value: '3-4', label: 'Kleuters (3-4 jaar)' },
+  { value: '4-5', label: 'Kleuters (4-5 jaar)' },
+  { value: '5-6', label: 'Kleuters (5-6 jaar)' },
+  { value: '6-7', label: 'Onderbouw (6-7 jaar)' },
+  { value: '7-8', label: 'Onderbouw (7-8 jaar)' },
+  { value: '8-10', label: 'Middenbouw (8-10 jaar)' }
 ]
 
-// Botanische thema's
-const botanicalThemes = [
-  { value: 'flowers', label: 'Bloemen', icon: Flower },
-  { value: 'trees', label: 'Bomen', icon: TreePine },
-  { value: 'vegetables', label: 'Groenten', icon: Leaf },
-  { value: 'fruits', label: 'Fruit', icon: Sun },
-  { value: 'herbs', label: 'Kruiden', icon: Leaf },
-  { value: 'insects', label: 'Insecten & Bestuivers', icon: Bug },
+// Islamitische thema's
+const islamicThemes = [
+  { value: 'allah_names', label: '99 Namen van Allah', icon: Star },
+  { value: 'prophets', label: 'Profeten verhalen', icon: Book },
+  { value: 'quran_stories', label: 'Koran verhalen', icon: BookOpen },
+  { value: 'islamic_manners', label: 'Islamitische manieren', icon: Heart },
+  { value: 'duas', label: "Dua's en gebeden", icon: Moon },
+  { value: 'ramadan', label: 'Ramadan', icon: Moon },
+  { value: 'eid', label: 'Eid vieringen', icon: Star },
+  { value: 'hajj', label: 'Hajj & Umrah', icon: Home },
+  { value: 'mosque', label: 'Moskee', icon: Home },
+  { value: 'prayer', label: 'Gebed & Wudu', icon: Moon }
+]
+
+// Universele thema's  
+const universalThemes = [
+  { value: 'animals', label: 'Dieren', icon: Baby },
+  { value: 'vehicles', label: 'Voertuigen', icon: Sun },
+  { value: 'nature', label: 'Natuur', icon: Flower2 },
   { value: 'seasons', label: 'Seizoenen', icon: Cloud },
-  { value: 'garden', label: 'Tuin', icon: Flower }
+  { value: 'emotions', label: 'Emoties', icon: Heart },
+  { value: 'alphabet', label: 'Alfabet', icon: Book },
+  { value: 'numbers', label: 'Cijfers', icon: Calendar },
+  { value: 'shapes', label: 'Vormen', icon: Star },
+  { value: 'family', label: 'Familie', icon: Users },
+  { value: 'daily_life', label: 'Dagelijks leven', icon: Home }
 ]
 
-// Stijlen
+// Kunststijlen - Geoptimaliseerd voor commerciële producten
 const artStyles = [
-  { value: 'simple', label: 'Simpel & Duidelijk' },
-  { value: 'watercolor', label: 'Waterverf' },
-  { value: 'cartoon', label: 'Cartoon' },
-  { value: 'realistic', label: 'Realistisch' },
-  { value: 'geometric', label: 'Geometrisch' },
-  { value: 'vintage', label: 'Vintage Botanisch' }
+  { value: 'warm_illustration', label: 'Warme Illustratie (Bestseller)' },
+  { value: 'watercolor_soft', label: 'Zachte Waterverf Stijl' },
+  { value: 'simple_line', label: 'Eenvoudige Lijntekening' },
+  { value: 'cartoon_friendly', label: 'Disney/Pixar Cartoon' },
+  { value: 'islamic_geometric', label: 'Islamitisch Geometrisch' },
+  { value: 'minimalist', label: 'Modern Minimalistisch' },
+  { value: 'kawaii', label: 'Kawaii (Schattig)' },
+  { value: 'retro_vintage', label: 'Retro Vintage' }
 ]
 
 export default function AIGeneratorPage() {
+  const [contentType, setContentType] = useState<'islamic' | 'universal'>('islamic')
   const [prompt, setPrompt] = useState('')
   const [category, setCategory] = useState('coloring')
   const [subcategory, setSubcategory] = useState('basic')
-  const [ageGroup, setAgeGroup] = useState('4-6')
-  const [theme, setTheme] = useState('flowers')
-  const [style, setStyle] = useState('simple')
+  const [ageGroup, setAgeGroup] = useState('4-5')
+  const [theme, setTheme] = useState('allah_names')
+  const [style, setStyle] = useState('warm_illustration')
   const [generating, setGenerating] = useState(false)
   const [saving, setSaving] = useState(false)
   const [generatedImages, setGeneratedImages] = useState<Array<{
@@ -106,47 +151,69 @@ export default function AIGeneratorPage() {
   const [productDescription, setProductDescription] = useState('')
 
   // Smart prompt builder
-  const buildSmartPrompt = () => {
-    const template = promptTemplates[category as keyof typeof promptTemplates]?.[subcategory as keyof typeof promptTemplates.coloring] || ''
-    const ThemeIcon = botanicalThemes.find(t => t.value === theme)?.icon
-    const themeName = botanicalThemes.find(t => t.value === theme)?.label || theme
+  const buildSmartPrompt = useCallback(() => {
+    const templates = contentType === 'islamic' ? islamicTemplates : universalTemplates
+    const categoryTemplates = templates[category as keyof typeof templates]
+    const template = (categoryTemplates && typeof categoryTemplates === 'object' && subcategory in categoryTemplates 
+      ? (categoryTemplates as any)[subcategory] 
+      : '') as string
+    
+    const themes = contentType === 'islamic' ? islamicThemes : universalThemes
+    const selectedTheme = themes.find(t => t.value === theme)
+    const themeName = selectedTheme?.label || theme
     
     let smartPrompt = template
       .replace('{subject}', themeName)
-      .replace('{plant}', themeName)
-      .replace('{theme}', themeName)
       .replace('{topic}', themeName)
+      .replace('{theme}', themeName)
+      .replace('{animal}', themeName)
+      .replace('{vehicle}', themeName)
       .replace('{age}', ageGroup.split('-')[0])
-      .replace('{max}', ageGroup === '2-4' ? '5' : ageGroup === '4-6' ? '10' : '20')
+      .replace('{max}', ageGroup === '2-3' ? '5' : ageGroup === '3-4' ? '10' : '20')
       .replace('{style}', artStyles.find(s => s.value === style)?.label || style)
-      .replace('{mood}', 'vrolijke en educatieve')
+      .replace('{emotion}', 'vreugde')
+      .replace('{prayer}', 'Bismillah')
+      .replace('{letter}', 'A')
+      .replace('{object}', 'appel')
+      .replace('{routine}', 'ochtend')
+      .replace('{season}', 'lente')
+      .replace('{shapes}', 'cirkel, vierkant, driehoek')
+      .replace('{count}', '5')
     
-    // Voeg extra details toe voor betere resultaten
-    const enhancements = [
-      'high quality',
-      'professional illustration',
-      'print-ready',
-      '300 DPI',
-      'clean design'
-    ]
+    // Leeftijd-specifieke complexiteit volgens onderzoek
+    let ageComplexity = ''
+    const ageNum = parseInt(ageGroup.split('-')[0])
     
-    if (category === 'coloring') {
-      enhancements.push('thick black lines', 'no grey shading', 'easy to color')
+    if (ageNum <= 3) {
+      ageComplexity = ', extra thick outlines, very simple design, minimal detail, large areas to color, single focal point'
+    } else if (ageNum <= 5) {
+      ageComplexity = ', thick outlines, moderate detail, clear boundaries, 2-3 related objects'
+    } else {
+      ageComplexity = ', clean outlines, intricate details, complex composition, detailed background elements'
     }
     
-    if (theme === 'flowers') {
-      smartPrompt += ', including tulips, sunflowers, and daisies'
-    } else if (theme === 'vegetables') {
-      smartPrompt += ', including carrots, tomatoes, and lettuce'
-    }
+    // Technische specificaties volgens DALL-E 3 best practices
+    const technicalSpecs = ', suitable for printing, coloring book style'
     
-    return `${smartPrompt}, ${enhancements.join(', ')}`
-  }
+    // Stijl parameter (onderzoek toont 'natural' werkt beter dan 'vivid' voor kleurplaten)
+    const apiStyle = 'natural'
+    
+    return smartPrompt + ageComplexity + technicalSpecs
+  }, [contentType, category, subcategory, ageGroup, theme, style])
 
   // Update prompt wanneer settings veranderen
   useEffect(() => {
     setPrompt(buildSmartPrompt())
-  }, [category, subcategory, ageGroup, theme, style])
+  }, [buildSmartPrompt])
+
+  // Reset theme wanneer content type verandert
+  useEffect(() => {
+    if (contentType === 'islamic') {
+      setTheme('allah_names')
+    } else {
+      setTheme('animals')
+    }
+  }, [contentType])
 
   // Genereer afbeelding
   const generateImage = async () => {
@@ -157,14 +224,16 @@ export default function AIGeneratorPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt,
-          size: '1024x1024',
-          quality: 'standard',
+          size: '1792x1024',
+          quality: 'standard', // Onderzoek toont 'standard' is optimaal voor line art
+          style: 'natural', // 'natural' produceert schonere line art dan 'vivid'
           n: 1
         })
       })
 
       if (!response.ok) {
-        throw new Error('Failed to generate image')
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to generate image')
       }
 
       const data = await response.json()
@@ -177,9 +246,9 @@ export default function AIGeneratorPage() {
       }, ...prev])
 
       setSelectedImage(0)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating image:', error)
-      alert('Er ging iets mis bij het genereren van de afbeelding')
+      alert(error.message || 'Er ging iets mis bij het genereren van de afbeelding')
     } finally {
       setGenerating(false)
     }
@@ -199,15 +268,20 @@ export default function AIGeneratorPage() {
       return
     }
 
+    if (productName.length < 3) {
+      alert('Productnaam moet minimaal 3 karakters lang zijn')
+      return
+    }
+
     setSaving(true)
     try {
       const image = generatedImages[selectedImage]
       
-      // Download de afbeelding eerst
+      // Download de afbeelding
       const imageResponse = await fetch(image.url)
       const blob = await imageResponse.blob()
       
-      // Upload naar eigen storage
+      // Upload naar storage
       const formData = new FormData()
       formData.append('file', blob, `${productName.toLowerCase().replace(/\s+/g, '-')}.png`)
       formData.append('folder', 'ai-generated')
@@ -227,9 +301,9 @@ export default function AIGeneratorPage() {
       const productData = {
         name: productName,
         slug: productName.toLowerCase().replace(/\s+/g, '-'),
-        description: productDescription || `${productName} - Gegenereerd met AI voor ${ageGroup} jaar`,
-        price: category === 'coloring' ? 2.99 : 4.99,
-        category_id: 'downloads', // Aanpassen naar juiste categorie
+        description: productDescription || `${productName} - ${contentType === 'islamic' ? 'Islamitische' : 'Educatieve'} content voor ${ageGroup} jaar`,
+        price: category === 'coloring' ? 3.99 : 5.99, // Aangepast naar optimale prijsstelling uit onderzoek
+        category_id: 'downloads',
         product_type: 'digital',
         preview_images: [uploadedUrl],
         files: [{
@@ -239,14 +313,15 @@ export default function AIGeneratorPage() {
         }],
         metadata: {
           ai_generated: true,
-          prompt: image.prompt,
-          revised_prompt: image.revised_prompt,
+          content_type: contentType,
+          category,
+          subcategory,
           age_group: ageGroup,
-          theme: theme,
-          category: category,
-          style: style
+          theme,
+          style,
+          prompt: image.prompt
         },
-        tags: [theme, category, ageGroup, 'ai-generated'],
+        tags: [contentType, category, theme, ageGroup],
         status: 'draft'
       }
 
@@ -260,7 +335,7 @@ export default function AIGeneratorPage() {
         throw new Error('Failed to create product')
       }
 
-      alert('Product succesvol aangemaakt!')
+      alert('Product succesvol aangemaakt! 🌟')
       setProductName('')
       setProductDescription('')
     } catch (error) {
@@ -271,17 +346,33 @@ export default function AIGeneratorPage() {
     }
   }
 
+  const currentThemes = contentType === 'islamic' ? islamicThemes : universalThemes
+
   return (
     <div className="container mx-auto p-6 max-w-7xl">
       <div className="flex items-center gap-3 mb-8">
-        <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg">
+        <div className="p-3 bg-gradient-to-br from-amber-500 to-rose-500 rounded-lg">
           <Wand2 className="h-6 w-6 text-white" />
         </div>
         <div>
-          <h1 className="text-3xl font-bold">AI Plaatjes Generator</h1>
-          <p className="text-gray-600">Genereer educatieve content met DALL-E 3</p>
+          <h1 className="text-3xl font-bold">LittleFidan AI Content Generator</h1>
+          <p className="text-gray-600">Genereer educatieve content met AI</p>
         </div>
       </div>
+
+      {/* Content Type Selector */}
+      <Tabs value={contentType} onValueChange={(v) => setContentType(v as 'islamic' | 'universal')} className="mb-6">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="islamic" className="flex items-center gap-2">
+            <Moon className="h-4 w-4" />
+            Islamitisch
+          </TabsTrigger>
+          <TabsTrigger value="universal" className="flex items-center gap-2">
+            <Sun className="h-4 w-4" />
+            Universeel
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Controls */}
@@ -290,7 +381,7 @@ export default function AIGeneratorPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <BookOpen className="h-5 w-5" />
+                <Layers className="h-5 w-5" />
                 Categorie
               </CardTitle>
             </CardHeader>
@@ -299,11 +390,10 @@ export default function AIGeneratorPage() {
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white">
                   <SelectItem value="coloring">Kleurplaten</SelectItem>
                   <SelectItem value="worksheet">Werkbladen</SelectItem>
                   <SelectItem value="educational">Educatief Materiaal</SelectItem>
-                  <SelectItem value="storybook">Verhalenboek</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -313,33 +403,46 @@ export default function AIGeneratorPage() {
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    {category === 'coloring' && (
+                  <SelectContent className="bg-white">
+                    {contentType === 'islamic' && category === 'coloring' && (
                       <>
-                        <SelectItem value="basic">Basis Kleurplaat</SelectItem>
-                        <SelectItem value="botanical">Botanisch Educatief</SelectItem>
-                        <SelectItem value="mandala">Mandala Stijl</SelectItem>
+                        <SelectItem value="basic">Basis Islamitisch</SelectItem>
+                        <SelectItem value="arabic">Arabisch Alfabet</SelectItem>
+                        <SelectItem value="dua">Dua's & Gebeden</SelectItem>
+                        <SelectItem value="nature">Natuur & Schepping</SelectItem>
                       </>
                     )}
-                    {category === 'worksheet' && (
+                    {contentType === 'universal' && category === 'coloring' && (
+                      <>
+                        <SelectItem value="animals">Dieren</SelectItem>
+                        <SelectItem value="vehicles">Voertuigen</SelectItem>
+                        <SelectItem value="alphabet">Alfabet</SelectItem>
+                        <SelectItem value="emotions">Emoties</SelectItem>
+                        <SelectItem value="seasons">Seizoenen</SelectItem>
+                      </>
+                    )}
+                    {contentType === 'islamic' && category === 'worksheet' && (
                       <>
                         <SelectItem value="tracing">Overtrekken</SelectItem>
                         <SelectItem value="counting">Tellen</SelectItem>
-                        <SelectItem value="matching">Verbinden</SelectItem>
+                        <SelectItem value="emotions">Emoties & Gevoel</SelectItem>
+                        <SelectItem value="routine">Dagelijkse Routine</SelectItem>
+                      </>
+                    )}
+                    {contentType === 'universal' && category === 'worksheet' && (
+                      <>
+                        <SelectItem value="counting">Tellen</SelectItem>
+                        <SelectItem value="shapes">Vormen</SelectItem>
+                        <SelectItem value="differences">Zoek de Verschillen</SelectItem>
+                        <SelectItem value="patterns">Patronen</SelectItem>
                       </>
                     )}
                     {category === 'educational' && (
                       <>
                         <SelectItem value="poster">Poster</SelectItem>
                         <SelectItem value="flashcard">Flashcard</SelectItem>
-                        <SelectItem value="infographic">Infographic</SelectItem>
-                      </>
-                    )}
-                    {category === 'storybook' && (
-                      <>
-                        <SelectItem value="scene">Scene</SelectItem>
-                        <SelectItem value="character">Karakter</SelectItem>
-                        <SelectItem value="cover">Boekomslag</SelectItem>
+                        {contentType === 'islamic' && <SelectItem value="infographic">Infographic</SelectItem>}
+                        {contentType === 'universal' && <SelectItem value="routine">Dagritme</SelectItem>}
                       </>
                     )}
                   </SelectContent>
@@ -361,7 +464,7 @@ export default function AIGeneratorPage() {
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white">
                   {ageGroups.map(age => (
                     <SelectItem key={age.value} value={age.value}>
                       {age.label}
@@ -376,30 +479,39 @@ export default function AIGeneratorPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Leaf className="h-5 w-5" />
-                Botanisch Thema
+                {contentType === 'islamic' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+                Thema
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-2">
-                {botanicalThemes.map(t => {
+                {currentThemes.map(t => {
                   const Icon = t.icon
                   return (
                     <button
                       key={t.value}
                       onClick={() => setTheme(t.value)}
                       className={cn(
-                        "flex items-center gap-2 p-3 rounded-lg border transition-colors",
+                        "flex items-center gap-2 p-2 rounded-lg border transition-all text-left",
                         theme === t.value
-                          ? "bg-sage-50 border-sage-500 text-sage-700"
+                          ? "bg-amber-50 border-amber-500 text-amber-700"
                           : "hover:bg-gray-50 border-gray-200"
                       )}
                     >
-                      <Icon className="h-4 w-4" />
-                      <span className="text-sm">{t.label}</span>
+                      <Icon className="h-4 w-4 flex-shrink-0" />
+                      <span className="text-xs">{t.label}</span>
                     </button>
                   )
                 })}
+              </div>
+              
+              {/* Waarschuwing over tekst */}
+              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-xs text-yellow-800">
+                  <strong>Let op:</strong> DALL-E 3 genereert vaak onleesbare tekst. 
+                  Voor Nederlandse/Engelse labels kun je beter de afbeeldingen 
+                  zonder tekst genereren en later tekst toevoegen.
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -417,7 +529,7 @@ export default function AIGeneratorPage() {
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white">
                   {artStyles.map(s => (
                     <SelectItem key={s.value} value={s.value}>
                       {s.label}
@@ -447,7 +559,7 @@ export default function AIGeneratorPage() {
                 <Textarea
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
-                  rows={4}
+                  rows={6}
                   className="font-mono text-sm"
                   placeholder="Beschrijf wat je wilt genereren..."
                 />
@@ -498,7 +610,7 @@ export default function AIGeneratorPage() {
                       className={cn(
                         "relative group cursor-pointer rounded-lg overflow-hidden border-2 transition-all",
                         selectedImage === idx
-                          ? "border-sage-500 shadow-lg"
+                          ? "border-amber-500 shadow-lg"
                           : "border-gray-200 hover:border-gray-300"
                       )}
                       onClick={() => setSelectedImage(idx)}
@@ -518,7 +630,7 @@ export default function AIGeneratorPage() {
                             variant="secondary"
                             onClick={(e) => {
                               e.stopPropagation()
-                              window.open(img.url, '_blank')
+                              window.open(img.url, '_blank', 'noopener,noreferrer')
                             }}
                           >
                             <Download className="h-4 w-4" />
@@ -526,7 +638,7 @@ export default function AIGeneratorPage() {
                         </div>
                       </div>
                       {selectedImage === idx && (
-                        <div className="absolute top-2 right-2 bg-sage-500 text-white p-1 rounded">
+                        <div className="absolute top-2 right-2 bg-amber-500 text-white p-1 rounded">
                           <Check className="h-4 w-4" />
                         </div>
                       )}
@@ -536,7 +648,7 @@ export default function AIGeneratorPage() {
 
                 {/* Selected Image Details */}
                 {selectedImage !== null && (
-                  <div className="mt-6 space-y-4 p-4 bg-gray-50 rounded-lg">
+                  <div className="mt-6 space-y-4 p-4 bg-amber-50 rounded-lg">
                     <div>
                       <Label>Gebruikte Prompt</Label>
                       <div className="mt-1 p-3 bg-white rounded border text-sm font-mono relative">
@@ -556,48 +668,30 @@ export default function AIGeneratorPage() {
                       </div>
                     </div>
 
-                    {generatedImages[selectedImage].revised_prompt && (
-                      <div>
-                        <Label>AI Verbeterde Prompt</Label>
-                        <div className="mt-1 p-3 bg-white rounded border text-sm font-mono relative">
-                          {generatedImages[selectedImage].revised_prompt}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="absolute top-1 right-1"
-                            onClick={() => copyPrompt(generatedImages[selectedImage].revised_prompt)}
-                          >
-                            {copiedPrompt === generatedImages[selectedImage].revised_prompt ? (
-                              <Check className="h-4 w-4 text-green-500" />
-                            ) : (
-                              <Copy className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-
                     {/* Save as Product */}
                     <div className="border-t pt-4">
-                      <h4 className="font-semibold mb-3">Opslaan als Product</h4>
+                      <h4 className="font-semibold mb-3 flex items-center gap-2">
+                        <Heart className="h-4 w-4 text-rose-500" />
+                        Opslaan als Product
+                      </h4>
                       <div className="space-y-3">
                         <div>
-                          <Label htmlFor="productName">Productnaam</Label>
+                          <Label htmlFor="productName">Productnaam *</Label>
                           <Input
                             id="productName"
                             value={productName}
                             onChange={(e) => setProductName(e.target.value)}
-                            placeholder="Bijv. Bloemen Kleurplaat Peuters"
+                            placeholder="Bijv. Ramadan Kleurplaten Bundle"
                           />
                         </div>
                         <div>
-                          <Label htmlFor="productDescription">Beschrijving (optioneel)</Label>
+                          <Label htmlFor="productDescription">Beschrijving</Label>
                           <Textarea
                             id="productDescription"
                             value={productDescription}
                             onChange={(e) => setProductDescription(e.target.value)}
                             rows={3}
-                            placeholder="Extra informatie over dit product..."
+                            placeholder="Beschrijf het product..."
                           />
                         </div>
                         <Button

@@ -1,18 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { createMollieClient } from '@mollie/api-client'
+import { createMollieClient, PaymentMethod } from '@mollie/api-client'
+import { CheckoutRequest, CheckoutItem, OrderItem } from '@/types/checkout'
+import { checkoutRequestSchema, safeValidate } from '@/lib/validation'
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createServerComponentClient({ cookies })
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          },
+        },
+      }
+    )
     const { data: { user } } = await supabase.auth.getUser()
     
+    // Validate request body
     const body = await request.json()
-    const { items, customerData, paymentMethod } = body
+    const validation = safeValidate(checkoutRequestSchema, body)
+    
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: validation.error },
+        { status: 400 }
+      )
+    }
+    
+    const { items, customerData, paymentMethod } = validation.data
 
     // Calculate totals
-    const subtotal = items.reduce((sum: number, item: any) => sum + item.price * item.quantity, 0)
+    const subtotal = items.reduce((sum: number, item: CheckoutItem) => sum + item.price * item.quantity, 0)
     const vat = subtotal * 0.21
     const total = subtotal + vat
 
@@ -49,7 +77,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create order items
-    const orderItems = items.map((item: any) => ({
+    const orderItems: Omit<OrderItem, 'order_id'>[] = items.map((item: CheckoutItem) => ({
       order_id: order.id,
       product_id: item.id,
       product_name: item.name,
@@ -83,7 +111,7 @@ export async function POST(request: NextRequest) {
             order_id: order.id,
             order_number: orderNumber
           },
-          method: paymentMethod === 'ideal' ? 'ideal' as any : undefined
+          method: paymentMethod === 'ideal' ? [PaymentMethod.ideal] : undefined
         })
 
         // Update order with payment ID
@@ -110,7 +138,7 @@ export async function POST(request: NextRequest) {
       orderNumber: order.order_number,
       customerName: customerData.fullName,
       customerEmail: customerData.email,
-      items: items.map((item: any) => ({
+      items: items.map((item: CheckoutItem) => ({
         name: item.name,
         price: item.price,
         quantity: item.quantity || 1

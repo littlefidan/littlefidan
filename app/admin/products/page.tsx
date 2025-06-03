@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@supabase/ssr'
 import { 
   PlusIcon, 
   PencilIcon, 
@@ -17,13 +17,17 @@ import ProductModal from './product-modal'
 interface Product {
   id: string
   name: string
+  slug?: string
   description: string
   price: number
   sale_price?: number
   category: string
   status: 'active' | 'draft' | 'out_of_stock'
-  stock: number
+  stock?: number
   image_url?: string
+  images?: string[]
+  product_type?: 'single' | 'bundle'
+  access_type?: 'free' | 'paid' | 'mixed'
   created_at: string
   updated_at: string
 }
@@ -37,7 +41,10 @@ export default function AdminProducts() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
-  const supabase = createClientComponentClient()
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
   useEffect(() => {
     fetchProducts()
@@ -218,10 +225,10 @@ export default function AdminProducts() {
                 <tr key={product.id} className="hover:bg-taupe-50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      {product.image_url && (
+                      {(product.image_url || (product.images && product.images[0])) && (
                         <div className="h-10 w-10 flex-shrink-0 mr-4">
                           <Image
-                            src={product.image_url}
+                            src={product.image_url || product.images![0]}
                             alt={product.name}
                             width={40}
                             height={40}
@@ -254,9 +261,9 @@ export default function AdminProducts() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`text-sm font-medium ${
-                      product.stock < 10 ? 'text-red-600' : 'text-primary-800'
+                      (product.stock || 0) < 10 ? 'text-red-600' : 'text-primary-800'
                     }`}>
-                      {product.stock}
+                      {product.stock || 0}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">

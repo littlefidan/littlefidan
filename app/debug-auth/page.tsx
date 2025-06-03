@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
+import { User } from '@supabase/supabase-js'
+import { AuthSession } from '@/types/auth'
 
 export default function DebugAuthPage() {
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
-  const [sessions, setSessions] = useState<any[]>([])
+  const [sessions, setSessions] = useState<AuthSession[]>([])
   
   const supabase = createClient()
 
@@ -14,14 +16,14 @@ export default function DebugAuthPage() {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
-      setSessions(prev => [...prev, { type: 'initial', session }])
+      setSessions(prev => [...prev, { type: 'initial', session } as AuthSession])
       setLoading(false)
     })
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null)
-      setSessions(prev => [...prev, { type: 'change', event, session }])
+      setSessions(prev => [...prev, { type: 'change', event, session } as AuthSession])
     })
 
     return () => subscription.unsubscribe()

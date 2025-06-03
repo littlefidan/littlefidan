@@ -14,9 +14,10 @@
     "@heroicons/react": "^2.2.0",
     "@mollie/api-client": "^4.1.0",
     "@radix-ui/react-label": "^2.1.7",
+    "@radix-ui/react-progress": "^1.1.7",
     "@radix-ui/react-select": "^2.2.5",
     "@radix-ui/react-slot": "^1.2.3",
-    "@supabase/auth-helpers-nextjs": "^0.10.0",
+    "@radix-ui/react-tabs": "^1.1.12",
     "@supabase/auth-ui-react": "^0.4.7",
     "@supabase/auth-ui-shared": "^0.1.8",
     "@supabase/ssr": "^0.5.2",
@@ -33,6 +34,7 @@
     "react-dropzone": "^14.3.8",
     "sonner": "^2.0.5",
     "tailwind-merge": "^2.6.0",
+    "zod": "^3.25.49",
     "zustand": "^5.0.5"
   },
   "devDependencies": {
@@ -43,6 +45,7 @@
     "@typescript-eslint/eslint-plugin": "^8.20.0",
     "@typescript-eslint/parser": "^8.20.0",
     "autoprefixer": "^10.4.20",
+    "dotenv": "^16.5.0",
     "eslint": "^9.18.0",
     "eslint-config-next": "15.3.3",
     "eslint-plugin-tailwindcss": "3.18.0",

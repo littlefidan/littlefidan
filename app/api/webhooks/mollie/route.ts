@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { createMollieClient } from '@mollie/api-client'
 
@@ -15,7 +15,23 @@ export async function POST(request: NextRequest) {
     const mollieClient = createMollieClient({ apiKey: process.env.MOLLIE_API_KEY })
     const payment = await mollieClient.payments.get(id)
 
-    const supabase = createServerComponentClient({ cookies })
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          },
+        },
+      }
+    )
 
     // Get order from payment metadata
     const orderId = (payment.metadata as any)?.order_id
@@ -65,7 +81,7 @@ export async function POST(request: NextRequest) {
     // If payment is successful, send confirmation email (when email service is ready)
     if (payment.status === 'paid') {
       // TODO: Send order confirmation email
-      console.log('Payment successful for order:', orderId)
+      // Payment successful for order: orderId
     }
 
     return NextResponse.json({ success: true })

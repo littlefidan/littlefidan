@@ -49,7 +49,7 @@ export function Header() {
         <div className="px-8">
           <div className="flex h-16 items-center justify-between">
             {/* Logo */}
-            <Link href="/" className="flex items-center space-x-3 group">
+            <Link href="/" className="flex items-center space-x-3 group" aria-label="LittleFidan homepage">
               <motion.div 
                 whileHover={{ rotate: 12, scale: 1.1 }}
                 transition={{ duration: 0.5, type: "spring" }}
@@ -84,7 +84,7 @@ export function Header() {
             </Link>
 
             {/* Desktop Navigation */}
-            <nav className="hidden lg:flex items-center space-x-6">
+            <nav className="hidden lg:flex items-center space-x-6" role="navigation" aria-label="Hoofdnavigatie">
               <Link href="/products" className="relative group">
                 <span className="text-taupe-600 hover:text-olive transition-all duration-300 text-sm font-medium">
                   Producten
@@ -129,6 +129,7 @@ export function Header() {
                   size="icon"
                   onClick={() => setIsSearchOpen(true)}
                   className="relative rounded-full hover:bg-mint-100 w-9 h-9"
+                  aria-label="Zoeken"
                 >
                   <Search className="h-4 w-4 text-taupe-600" />
                 </Button>
@@ -140,6 +141,7 @@ export function Header() {
                     variant="ghost"
                     size="icon"
                     className="relative rounded-full hover:bg-baby-pink-100 w-9 h-9"
+                    aria-label={`Verlanglijst ${wishlistItems > 0 ? `(${wishlistItems} items)` : ''}`}
                   >
                     <Heart className="h-4 w-4 text-taupe-600" />
                     <AnimatePresence>
@@ -164,6 +166,7 @@ export function Header() {
                     variant="ghost"
                     size="icon"
                     className="relative rounded-full hover:bg-sage-100 w-9 h-9"
+                    aria-label={`Winkelwagen ${cartItems > 0 ? `(${cartItems} items)` : ''}`}
                   >
                     <ShoppingCart className="h-4 w-4 text-taupe-600" />
                     <AnimatePresence>
@@ -188,6 +191,7 @@ export function Header() {
                     variant="ghost"
                     size="icon"
                     className="relative rounded-full hover:bg-baby-blue-100 w-9 h-9"
+                    aria-label="Mijn account"
                   >
                     <User className="h-4 w-4 text-taupe-600" />
                   </Button>
@@ -218,6 +222,8 @@ export function Header() {
                   size="icon"
                   className="lg:hidden rounded-full hover:bg-taupe-100 w-9 h-9"
                   onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                  aria-label={isMobileMenuOpen ? 'Menu sluiten' : 'Menu openen'}
+                  aria-expanded={isMobileMenuOpen}
                 >
                   <AnimatePresence mode="wait">
                     {isMobileMenuOpen ? (

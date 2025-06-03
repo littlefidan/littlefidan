@@ -1,10 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { CheckoutItem } from '@/types/checkout'
+import { safeValidate } from '@/lib/validation'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) => {
+                cookieStore.set(name, value, options)
+              })
+            } catch (error) {
+              // Ignore - SSR environment
+            }
+          }
+        }
+      }
+    )
     const { searchParams } = new URL(request.url)
     
     // Check if user is authenticated
@@ -28,8 +50,14 @@ export async function GET(request: NextRequest) {
     // Get query parameters
     const status = searchParams.get('status')
     const search = searchParams.get('search')
-    const limit = parseInt(searchParams.get('limit') || '20')
-    const offset = parseInt(searchParams.get('offset') || '0')
+    
+    // Parse pagination parameters
+    const limitParam = searchParams.get('limit') || '20'
+    const offsetParam = searchParams.get('offset') || '0'
+    
+    // Convert to numbers with validation
+    const limit = Math.min(Math.max(parseInt(limitParam) || 20, 1), 100)
+    const offset = Math.max(parseInt(offsetParam) || 0, 0)
 
     // Build query
     let query = supabase
@@ -74,9 +102,9 @@ export async function GET(request: NextRequest) {
       limit,
       offset
     })
-  } catch (error: any) {
+  } catch (error) {
     return NextResponse.json(
-      { error: error.message || 'Er is een fout opgetreden' },
+      { error: error instanceof Error ? error.message : 'Er is een fout opgetreden' },
       { status: 500 }
     )
   }
@@ -84,7 +112,27 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) => {
+                cookieStore.set(name, value, options)
+              })
+            } catch (error) {
+              // Ignore - SSR environment
+            }
+          }
+        }
+      }
+    )
     
     // Check if user is authenticated
     const { data: { user } } = await supabase.auth.getUser()
@@ -96,7 +144,7 @@ export async function POST(request: NextRequest) {
     const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
 
     // Calculate totals
-    const subtotal = orderData.items.reduce((sum: number, item: any) => 
+    const subtotal = orderData.items.reduce((sum: number, item: CheckoutItem) => 
       sum + (item.price * item.quantity), 0
     )
     const tax = subtotal * 0.21 // 21% BTW
@@ -126,9 +174,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Create order items
-    const orderItems = orderData.items.map((item: any) => ({
+    const orderItems = orderData.items.map((item: CheckoutItem) => ({
       order_id: order.id,
-      product_id: item.product_id,
+      product_id: item.id,
       product_name: item.name,
       product_price: item.price,
       quantity: item.quantity,
@@ -144,9 +192,9 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ order })
-  } catch (error: any) {
+  } catch (error) {
     return NextResponse.json(
-      { error: error.message || 'Er is een fout opgetreden' },
+      { error: error instanceof Error ? error.message : 'Er is een fout opgetreden' },
       { status: 500 }
     )
   }

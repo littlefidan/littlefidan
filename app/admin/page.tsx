@@ -1,5 +1,4 @@
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { checkAdminAuth } from '@/lib/auth/admin-check'
 import { 
   CurrencyEuroIcon, 
   ShoppingBagIcon, 
@@ -12,7 +11,7 @@ import DashboardCharts from '@/components/admin/dashboard-charts'
 import RecentActivity from '@/components/admin/recent-activity'
 
 async function getDashboardStats() {
-  const supabase = createServerComponentClient({ cookies })
+  const { supabase } = await checkAdminAuth()
   
   // Get current date and date 30 days ago
   const now = new Date()
